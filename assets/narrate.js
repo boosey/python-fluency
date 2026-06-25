@@ -113,26 +113,29 @@
     var u = new SpeechSynthesisUtterance(chunks[i]);
     if (chosenVoice) u.voice = chosenVoice;
     u.rate = rate;
-    u.onend = next;
+    u.onend = next;                  // fast path: advance the moment it ends
     u.onerror = next;                // a failed/cancelled chunk: skip ahead
+    var started = false;
+    u.onstart = function () { started = true; };
     synth.speak(u);
 
-    // Watchdog: if a voice never fires `onend`, the chain would die here.
-    // Estimate the chunk's spoken length (~2.6 words/sec, scaled by rate) and
-    // force-advance once it has clearly finished, so narration can't stall.
+    // Fallback for voices that never fire `onend` (notably Chrome's remote
+    // Google voices): poll `speaking` every 250ms and advance as soon as the
+    // engine has spoken and gone quiet, so the gap between lines stays short
+    // instead of stalling. A per-line hard cap covers an engine that never
+    // starts at all.
     var words = chunks[i].split(/\s+/).length;
-    var estMs = (words / (2.6 * rate)) * 1000 + 4000;
-    var ticks = 0;
-    function checkDone() {
+    var hardCapMs = (words / 2.0) * 1000 + 8000;
+    var elapsed = 0, step = 250;
+    function poll() {
       if (advanced) return;
-      if (paused) { watchdog = setTimeout(checkDone, 1500); return; }
-      ticks++;
-      // Advance when the engine reports it's done, or after a hard cap in case
-      // it gets stuck reporting "speaking" forever.
-      if (!synth.speaking || !playing || ticks > 8) next();
-      else watchdog = setTimeout(checkDone, 1500);
+      if (paused) { watchdog = setTimeout(poll, step); return; }
+      if (synth.speaking) started = true;
+      elapsed += step;
+      if (!playing || (started && !synth.speaking) || elapsed >= hardCapMs) { next(); return; }
+      watchdog = setTimeout(poll, step);
     }
-    watchdog = setTimeout(checkDone, estMs);
+    watchdog = setTimeout(poll, step);
   }
 
   function play() {
