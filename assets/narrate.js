@@ -38,6 +38,13 @@
   var chosenVoice = null;
   var rate = 1.0;
   var els = {};
+  var watchdog = null;   // fallback timer for voices that never fire `onend`
+  var heartbeat = null;  // periodic resume() to defeat Chrome's ~15s stall
+
+  function clearTimers() {
+    if (watchdog) { clearTimeout(watchdog); watchdog = null; }
+    if (heartbeat) { clearInterval(heartbeat); heartbeat = null; }
+  }
 
   function barCss() {
     return [
@@ -75,21 +82,57 @@
     // Prefer an English voice; fall back to the first available.
     var en = voices.filter(function (v) { return /^en(-|_|$)/i.test(v.lang); });
     var pool = en.length ? en : voices;
-    var google = pool.find(function (v) { return /google/i.test(v.name); });
-    return google || pool[0];
+    // Prefer a LOCAL (on-device) voice. Chrome's remote "Google …" voices
+    // fire `onend` unreliably — usually not at all between back-to-back
+    // utterances — which stalls the sentence-by-sentence chain after the first
+    // line. Local voices fire it dependably, so use them first.
+    var local = pool.filter(function (v) { return v.localService; });
+    return local[0] || pool[0];
+  }
+
+  function startHeartbeat() {
+    if (heartbeat) clearInterval(heartbeat);
+    // Chrome silently pauses synthesis after ~15s; a periodic resume() keeps
+    // long sentences (and the queue) alive.
+    heartbeat = setInterval(function () {
+      if (playing && !paused && synth.speaking) synth.resume();
+    }, 10000);
   }
 
   function speakFrom(i) {
     if (i >= chunks.length) { stop(); return; }
     idx = i;
+    var advanced = false;            // guard: advance to the next chunk once
+    function next() {
+      if (advanced) return;
+      advanced = true;
+      if (watchdog) { clearTimeout(watchdog); watchdog = null; }
+      if (playing && !paused) speakFrom(idx + 1);
+    }
+
     var u = new SpeechSynthesisUtterance(chunks[i]);
     if (chosenVoice) u.voice = chosenVoice;
     u.rate = rate;
-    u.onend = function () {
-      if (playing && !paused) speakFrom(idx + 1);
-    };
-    u.onerror = function () { /* skip a failed chunk */ if (playing) speakFrom(idx + 1); };
+    u.onend = next;
+    u.onerror = next;                // a failed/cancelled chunk: skip ahead
     synth.speak(u);
+
+    // Watchdog: if a voice never fires `onend`, the chain would die here.
+    // Estimate the chunk's spoken length (~2.6 words/sec, scaled by rate) and
+    // force-advance once it has clearly finished, so narration can't stall.
+    var words = chunks[i].split(/\s+/).length;
+    var estMs = (words / (2.6 * rate)) * 1000 + 4000;
+    var ticks = 0;
+    function checkDone() {
+      if (advanced) return;
+      if (paused) { watchdog = setTimeout(checkDone, 1500); return; }
+      ticks++;
+      // Advance when the engine reports it's done, or after a hard cap in case
+      // it gets stuck reporting "speaking" forever.
+      if (!synth.speaking || !playing || ticks > 8) next();
+      else watchdog = setTimeout(checkDone, 1500);
+    }
+    watchdog = setTimeout(checkDone, estMs);
   }
 
   function play() {
@@ -98,6 +141,7 @@
     if (playing) return;
     synth.cancel();
     playing = true; paused = false;
+    startHeartbeat();
     speakFrom(idx >= chunks.length ? 0 : idx);
     setState();
   }
@@ -106,7 +150,13 @@
     synth.pause(); paused = true; setState();
   }
   function stop() {
-    synth.cancel(); playing = false; paused = false; idx = 0; setState();
+    // Set state BEFORE cancel(): cancelling can synchronously fire the current
+    // utterance's onend/onerror, and if `playing` were still true that handler
+    // would speak the next sentence — the "press Stop, hear the next line" bug.
+    playing = false; paused = false; idx = 0;
+    clearTimers();
+    synth.cancel();
+    setState();
   }
 
   function setState() {
