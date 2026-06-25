@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 06 — Strings &amp; f-strings · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson six: strings and f-strings.
+You already format strings in whatever language you came from, so this lesson is about the one Python way that has quietly replaced all the others.
+That way is the f-string: put an f before the opening quote, and any expression inside curly braces is evaluated and dropped right into the text.
+So f, quote, name is age, with name in braces and age in braces, reads almost exactly like the sentence it produces.
+The braces are not limited to bare variables; you can put any expression inside, like a method call or arithmetic.
+A small gift from Python 3.8 is the self-documenting form: write the expression, then an equals sign, still inside the braces, and you get both the expression text and its value.
+After the value you can add a colon and a format spec to control how it looks.
+Colon dot two f rounds a float to two decimal places; colon comma adds thousands separators; colon greater-than ten right-aligns in a field of width ten; colon zero three d pads an integer to three digits with leading zeros.
+Now the second big idea: building a string from many pieces.
+In many languages you reach for a StringBuilder, or you append to a string inside a loop with plus-equals.
+In Python you collect the pieces in a list and then call join on the separator, like empty-quote dot join of parts.
+Join is idiomatic because Python strings are immutable, so plus-equals in a loop quietly creates a brand new string every iteration.
+Immutability is the theme of the whole type: every string method returns a new string and never changes the original.
+Strip, split, replace, starts-with, and lower all hand you a fresh value, so you assign the result rather than expecting a mutation.
+To test whether one string contains another, you do not call a method at all; you just write the in operator.
+Splitlines breaks text into a list of lines, and triple-quoted strings let you write blocks that span several lines.
+For regular expressions and Windows paths, reach for a raw string by prefixing the quote with r, which turns off backslash escapes.
+A quick word on history: you may still meet percent-formatting and the dot-format method, but for new code prefer f-strings, which are clearer and faster.
+There is no printf and no StringBuilder here; the f-string and join cover almost everything.
+Scroll down, take the quick checks, and replay this narration whenever you like.
+When something is unclear, ask me directly. I am your teacher for this course.
+</div>
+
+<main>
+  <div class="kicker">Lesson 06 · Idiomatic Python</div>
+  <h1>Strings &amp; f-strings</h1>
+  <p class="lede">One syntax for formatting, one idiom for building — f-strings and
+  <code>join</code> replace the printf, concatenation, and StringBuilder habits you
+  arrived with.</p>
+
+  <p>You already know how to stitch text together. The win here is narrow: make the
+  f-string your reflex for <em>formatting</em>, and <code>"".join(...)</code> your
+  reflex for <em>building</em>, so you stop reaching for the patterns Python doesn't
+  want.</p>
+
+  <h2>The f-string: expressions inside the text</h2>
+  <div class="contrast">
+    <div class="col other">
+      <h4>Other formatting styles</h4>
+<pre><code><span class="c-com"># positional / printf-ish / .format</span>
+<span class="c-str">"%s is %d"</span> % (name, age)
+<span class="c-str">"{} is {}"</span>.<span class="c-fn">format</span>(name, age)</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># the value sits where you read it</span>
+f<span class="c-str">"{name} is {age}"</span></code></pre>
+    </div>
+  </div>
+
+  <p>The <code>f</code> prefix turns the literal into a template: anything inside
+  <code>{ }</code> is a real Python <strong>expression</strong>, evaluated in place.
+  That means method calls and arithmetic live right where the value appears:</p>
+<pre><code>f<span class="c-str">"{name.upper()} scored {score * 100:.0f}%"</span>
+f<span class="c-str">"total: {price + tax}"</span></code></pre>
+
+  <div class="note"><strong>Self-documenting (3.8+):</strong> add an <code>=</code>
+  after the expression and the f-string prints both the source text <em>and</em> its
+  value — perfect for quick debugging:
+<pre><code>x = <span class="c-num">42</span>
+<span class="c-fn">print</span>(f<span class="c-str">"{x=}"</span>)   <span class="c-com"># x=42</span></code></pre></div>
+
+  <h2>Format specs: the part after the colon</h2>
+  <p>Inside the braces, a <code>:</code> introduces a <strong>format spec</strong>
+  that controls presentation without touching the value:</p>
+<pre><code>f<span class="c-str">"{x:.2f}"</span>    <span class="c-com"># 3.14159  -&gt; '3.14'   (2 decimal places)</span>
+f<span class="c-str">"{n:,}"</span>      <span class="c-com"># 1000000  -&gt; '1,000,000' (thousands)</span>
+f<span class="c-str">"{p:&gt;10}"</span>    <span class="c-com"># 'hi'     -&gt; '        hi' (right-align, width 10)</span>
+f<span class="c-str">"{i:03d}"</span>    <span class="c-com"># 7        -&gt; '007'   (zero-pad to 3 digits)</span></code></pre>
+  <p>You can combine them — alignment, width, precision, and grouping all stack in
+  one spec, e.g. <code>f"{value:&gt;12,.2f}"</code>.</p>
+
+  <h2>Building strings: <code>join</code>, not <code>+=</code></h2>
+  <div class="contrast">
+    <div class="col other">
+      <h4>The habit to drop</h4>
+<pre><code><span class="c-com"># new string every iteration</span>
+out = <span class="c-str">""</span>
+<span class="c-kw">for</span> p <span class="c-kw">in</span> parts:
+    out += p + <span class="c-str">","</span></code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># one allocation, separator up front</span>
+out = <span class="c-str">","</span>.<span class="c-fn">join</span>(parts)</code></pre>
+    </div>
+  </div>
+  <p>There is no StringBuilder in Python, and you don't need one. Because strings are
+  <strong>immutable</strong>, <code>+=</code> in a loop quietly allocates a fresh
+  string each pass. <code>str.join</code> walks the pieces once and builds the result
+  in a single pass — call it on the <em>separator</em>:
+  <code>"".join(parts)</code> glues with nothing between.</p>
+
+  <div class="note"><strong>The theme — immutability:</strong> every string method
+  <em>returns a new string</em> and never mutates in place. So you assign the result;
+  you don't expect the original to change.</div>
+
+  <h2>Methods return new strings</h2>
+<pre><code>s = <span class="c-str">"  Hello, World  "</span>
+s.strip()              <span class="c-com"># 'Hello, World'  (s is unchanged)</span>
+s.lower()              <span class="c-com"># '  hello, world  '</span>
+s.replace(<span class="c-str">"l"</span>, <span class="c-str">"L"</span>)   <span class="c-com"># '  HeLLo, WorLd  '</span>
+<span class="c-str">"a,b,c"</span>.split(<span class="c-str">","</span>)    <span class="c-com"># ['a', 'b', 'c']</span>
+<span class="c-str">"file.py"</span>.startswith(<span class="c-str">"file"</span>)  <span class="c-com"># True</span></code></pre>
+  <p>To test for a <em>substring</em>, don't call a method — use the
+  <code>in</code> operator, which reads like English:</p>
+<pre><code><span class="c-kw">if</span> <span class="c-str">"@"</span> <span class="c-kw">in</span> address:       <span class="c-com"># substring test</span>
+    ...
+<span class="c-kw">for</span> line <span class="c-kw">in</span> text.splitlines():  <span class="c-com"># list of lines, no trailing \n</span>
+    ...</code></pre>
+
+  <h2>Multi-line and raw strings</h2>
+<pre><code><span class="c-com"># triple quotes span lines verbatim</span>
+msg = <span class="c-str">"""Dear user,
+Your order shipped.
+"""</span>
+
+<span class="c-com"># raw string: backslashes are literal — for regex and paths</span>
+pattern = r<span class="c-str">"\d+\.\d+"</span>
+path    = r<span class="c-str">"C:\Users\me"</span></code></pre>
+  <p>An <code>r</code> prefix turns off backslash escapes, so <code>\d</code> stays
+  two characters instead of becoming an escape — exactly what regex and Windows paths
+  want. (You can combine: <code>rf"..."</code> is a raw f-string.)</p>
+
+  <p class="muted">Old code uses <code>%</code> and <code>.format()</code>; you should
+  be able to <em>read</em> them, but reach for f-strings in new code — they're
+  clearer and faster.</p>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Three quick checks</h2>
+  <p class="muted">Recall beats recognition — answer before you scroll. Immediate
+  feedback below each.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. Which expression formats <code>x</code> with exactly two decimal places?</div>
+    <button class="opt" data-correct="1">f"{x:.2f}"</button>
+    <button class="opt">f"{x:2.f}"</button>
+    <button class="opt">f"{x:02d}"</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. Which is the idiomatic way to build one string from a list <code>parts</code>?</div>
+    <button class="opt">acc = ""; loop with acc += part</button>
+    <button class="opt" data-correct="1">result = "".join(parts)</button>
+    <button class="opt">result = StringBuilder(parts)</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. After <code>s = "Hi"</code>, what does <code>s.lower()</code> do to <code>s</code>?</div>
+    <button class="opt" data-correct="1">nothing — it returns a new string "hi"</button>
+    <button class="opt">it changes s in place to be "hi"</button>
+    <button class="opt">it errors — s has no method lower</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary source to go deeper:</strong> the official Python tutorial on
+  <a href="https://docs.python.org/3/tutorial/inputoutput.html#formatted-string-literals">formatted
+  string literals</a> walks through f-strings and format specs with worked examples;
+  pair it with the reference list of
+  <a href="https://docs.python.org/3/library/stdtypes.html#string-methods">string
+  methods</a> for everything <code>str</code> can do.</p>
+
+  <div class="ask-teacher">💬 <strong>Stuck or curious?</strong> Ask me directly —
+  “what does <code>!r</code> do inside an f-string?”, “show me a nested format spec”,
+  “why is join faster than <code>+=</code> in a loop?”. I'm your teacher for this
+  course, and the next lesson adapts to what you ask.</div>
+
+  <div class="lesson-nav">
+    <a href="0005-iteration-builtins.html">← Prev: Iteration &amp; its built-ins</a>
+    <a href="0007-dictionary-idioms.html">Next: Dictionary idioms →</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — `:.2f` means fixed-point with 2 decimals. `:2.f` is invalid, and `:02d` is integer zero-padding.",
+          no: "Not quite. `.2f` is the fixed-point-with-2-decimals spec; `:2.f` is malformed and `:02d` formats integers." },
+    q2: { ok: "Correct — call join on the separator. Strings are immutable, so `+=` in a loop reallocates each pass.",
+          no: "Both traps are non-idiomatic: `+=` reallocates every loop, and there is no StringBuilder. Use `\"\".join(parts)`." },
+    q3: { ok: "Correct — strings are immutable, so `.lower()` returns a new string and leaves `s` untouched.",
+          no: "Strings are immutable. `.lower()` returns a NEW string; you must assign it. It does not mutate `s` or error." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>

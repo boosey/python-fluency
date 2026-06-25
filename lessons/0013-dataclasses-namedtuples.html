@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 13 — Dataclasses &amp; named tuples · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson thirteen: dataclasses and named tuples.
+This lesson is about modelling plain data without writing a wall of boilerplate.
+In most languages, a small data-holding class means a constructor, a field list, an equals method, and a toString — all by hand.
+Python generates that whole chassis for you from a single decorator and a few annotated fields.
+Put @dataclass above a class, list each field as a name and a type, and you are done.
+The decorator writes __init__, __repr__, and __eq__ for you, derived directly from those annotations.
+Remember the dunder lesson: __repr__ controls how the object prints, and __eq__ controls when two objects count as equal.
+A dataclass wires both up automatically, so two points with the same coordinates compare equal out of the box.
+Fields can have defaults, written just like default arguments to a function.
+But never default a field to a mutable like an empty list, because that list would be shared across every instance.
+Instead use field with default_factory set to list, and each instance gets its own fresh list.
+That is the same mutable-default trap from lesson eight, solved the dataclass way.
+Pass frozen equals True and instances become read-only and hashable, so they can live in sets and dictionary keys.
+Pass order equals True and Python generates the comparison operators, so you can sort instances by their fields.
+A dataclass is still an ordinary class, so you can add methods and computed properties as normal.
+If you need to derive a field after init, define __post_init__ and finish the setup there.
+For a lightweight immutable record, typing.NamedTuple gives you a tuple that also has named fields.
+The older collections.namedtuple does the same thing with a different, string-based syntax; reach for the typing form in new code.
+Pick a NamedTuple when the value is a fixed, ordered record you might unpack like a tuple; pick a dataclass when it has behaviour or mutates.
+And remember: a plain dict or tuple is often enough — a dataclass earns its keep once the shape is fixed and you want a real type.
+Scroll down, take the quick checks, and then ask me anything that is still fuzzy.
+I am your teacher for this course, and the next lesson follows your questions.
+</div>
+
+<main>
+  <div class="kicker">Lesson 13 · Idiomatic Python</div>
+  <h1>Dataclasses &amp; named tuples</h1>
+  <p class="lede">Model plain data without the ceremony. One decorator writes the
+  constructor, the printer, and the equality check — so you describe the shape and
+  Python builds the machinery.</p>
+
+  <p>You already know how to write a class that just holds a few fields. The point
+  of this lesson isn't <em>that</em> you can — it's that idiomatic Python asks you
+  to <em>declare</em> the fields and lets the language generate the boilerplate.</p>
+
+  <h2>The boilerplate Python replaces</h2>
+  <div class="contrast">
+    <div class="col other">
+      <h4>Most languages (and old Python)</h4>
+<pre><code><span class="c-kw">class</span> <span class="c-fn">Point</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(self, x, y):
+        self.x = x
+        self.y = y
+    <span class="c-kw">def</span> <span class="c-fn">__repr__</span>(self):
+        <span class="c-kw">return</span> f<span class="c-str">"Point(x={self.x}, y={self.y})"</span>
+    <span class="c-kw">def</span> <span class="c-fn">__eq__</span>(self, other):
+        <span class="c-kw">return</span> (self.x, self.y) == (other.x, other.y)</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-kw">from</span> dataclasses <span class="c-kw">import</span> dataclass
+
+<span class="c-fn">@dataclass</span>
+<span class="c-kw">class</span> <span class="c-fn">Point</span>:
+    x: <span class="c-fn">int</span>
+    y: <span class="c-fn">int</span></code></pre>
+    </div>
+  </div>
+
+  <p>Both define the same class. The <code>@dataclass</code> decorator reads the
+  annotated fields and <strong>generates</strong> <code>__init__</code>,
+  <code>__repr__</code>, and <code>__eq__</code> for you — exactly the dunders from
+  the earlier lesson. So <code>Point(1, 2)</code> prints as
+  <code>Point(x=1, y=2)</code>, and <code>Point(1, 2) == Point(1, 2)</code> is
+  <code>True</code> without you writing a line of it.</p>
+
+  <div class="note"><strong>The annotations are mandatory:</strong> a field is any
+  class-level name with a type annotation. <code>x: int</code> declares a field;
+  <code>x = 0</code> with no annotation is <em>not</em> a dataclass field, just a
+  plain class attribute. The type is a hint — Python doesn't enforce it.</div>
+
+  <h2>Defaults — and the mutable-default trap</h2>
+  <p>Fields take defaults just like function arguments, with the same rule that
+  defaulted fields must follow non-defaulted ones:</p>
+<pre><code><span class="c-fn">@dataclass</span>
+<span class="c-kw">class</span> <span class="c-fn">User</span>:
+    name: <span class="c-fn">str</span>
+    active: <span class="c-fn">bool</span> = <span class="c-kw">True</span></code></pre>
+  <p>But the mutable-default trap from lesson 08 still bites: a field defaulted to
+  <code>[]</code> would be <strong>shared</strong> by every instance. Dataclasses
+  detect this and make you spell out a per-instance factory instead:</p>
+<pre><code><span class="c-kw">from</span> dataclasses <span class="c-kw">import</span> dataclass, field
+
+<span class="c-fn">@dataclass</span>
+<span class="c-kw">class</span> <span class="c-fn">Cart</span>:
+    owner: <span class="c-fn">str</span>
+    items: <span class="c-fn">list</span> = field(default_factory=<span class="c-fn">list</span>)  <span class="c-com"># fresh list each time</span></code></pre>
+  <p><code>field(default_factory=list)</code> calls <code>list()</code> once
+  per instance, so every <code>Cart</code> gets its own list. Writing
+  <code>items: list = []</code> is an error a dataclass refuses to let you make.</p>
+
+  <h2>frozen and order — immutability and sorting</h2>
+<pre><code><span class="c-fn">@dataclass</span>(frozen=<span class="c-kw">True</span>, order=<span class="c-kw">True</span>)
+<span class="c-kw">class</span> <span class="c-fn">Version</span>:
+    major: <span class="c-fn">int</span>
+    minor: <span class="c-fn">int</span></code></pre>
+  <p><code>frozen=True</code> makes instances <strong>read-only</strong>: assigning
+  to a field raises, and because they can't change, Python also generates
+  <code>__hash__</code> — so frozen instances work as <code>set</code> members and
+  <code>dict</code> keys. <code>order=True</code> generates <code>&lt;</code>,
+  <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code> by comparing fields as a
+  tuple, top to bottom — so <code>sorted(versions)</code> just works.</p>
+
+  <div class="note"><strong>Still a normal class:</strong> a dataclass can have
+  methods, properties, and class attributes like any other. If a field must be
+  computed from the others, set it in <code>__post_init__</code>, which runs right
+  after the generated <code>__init__</code> finishes.</div>
+
+  <h2>Lightweight records: NamedTuple</h2>
+  <p>When the value is a small, fixed, <em>immutable</em> record — and you'd happily
+  unpack it like a tuple — a named tuple is lighter than a dataclass. The modern
+  spelling is <code>typing.NamedTuple</code>, which reads just like a dataclass:</p>
+<pre><code><span class="c-kw">from</span> typing <span class="c-kw">import</span> NamedTuple
+
+<span class="c-kw">class</span> <span class="c-fn">Point</span>(NamedTuple):
+    x: <span class="c-fn">int</span>
+    y: <span class="c-fn">int</span>
+
+p = Point(<span class="c-num">1</span>, <span class="c-num">2</span>)
+p.x          <span class="c-com"># 1  — access by name</span>
+x, y = p     <span class="c-com"># also unpacks like a tuple</span></code></pre>
+  <p>The older <code>collections.namedtuple</code> does the same thing with a
+  string-based call — <code>Point = namedtuple("Point", ["x", "y"])</code>. It
+  still works everywhere, but in new code prefer the <code>typing.NamedTuple</code>
+  class form: it's annotated, supports defaults and methods, and reads better.</p>
+
+  <h2>Which one, and when none?</h2>
+  <ul>
+    <li><strong>NamedTuple</strong> — a fixed, ordered, immutable record you might
+      unpack or compare as a tuple (coordinates, an RGB colour, a return value).</li>
+    <li><strong>dataclass</strong> — the shape has behaviour, mutates, or you want
+      <code>frozen</code>/<code>order</code>/<code>__post_init__</code> control.</li>
+    <li><strong>plain dict or tuple</strong> — the keys are dynamic or one-off and
+      no fixed type earns its keep; reach for a class once the shape is settled.</li>
+  </ul>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Three quick checks</h2>
+  <p class="muted">Recall beats recognition — answer before you scroll. Immediate
+  feedback below each.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. What does <code>@dataclass</code> generate from the annotated fields?</div>
+    <button class="opt" data-correct="1"><code>__init__</code>, <code>__repr__</code>, and <code>__eq__</code></button>
+    <button class="opt">type validation that rejects wrong-typed arguments</button>
+    <button class="opt">private fields that block all outside mutation</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. How do you give a dataclass field a fresh empty list per instance?</div>
+    <button class="opt">items: list = []  for a clean default value</button>
+    <button class="opt" data-correct="1">items: list = field(default_factory=list)</button>
+    <button class="opt">items: list = field(default=list())  per call</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. You want a small immutable record you can unpack like a tuple. Reach for:</div>
+    <button class="opt">a mutable @dataclass with order set to True</button>
+    <button class="opt" data-correct="1">a typing.NamedTuple subclass of fields</button>
+    <button class="opt">a plain dict keyed by each field name</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary source to go deeper:</strong> the official
+  <a href="https://docs.python.org/3/library/dataclasses.html">dataclasses
+  documentation</a> — it covers <code>field()</code>, <code>frozen</code>,
+  <code>order</code>, and <code>__post_init__</code> in full, with the exact rules
+  the decorator follows. For the lightweight record, see
+  <a href="https://docs.python.org/3/library/typing.html#typing.NamedTuple"><code>typing.NamedTuple</code></a>.</p>
+
+  <div class="ask-teacher">💬 <strong>Stuck or curious?</strong> Ask me directly —
+  “when should I use frozen=True?”, “what exactly does __post_init__ run after?”,
+  “NamedTuple or dataclass for a function's return value?”. I'm your teacher for
+  this course, and the next lesson adapts to what you ask.</div>
+
+  <div class="lesson-nav">
+    <a href="0012-generators-and-yield.html">← Prev: Generators &amp; yield</a>
+    <a href="0014-exceptions-and-eafp.html">Next: Exceptions &amp; EAFP →</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — it writes __init__, __repr__, and __eq__ from the annotated fields. The types are hints, not enforced, and nothing is made private.",
+          no: "Not quite. A dataclass generates the dunders (__init__, __repr__, __eq__); it does not validate types or hide fields." },
+    q2: { ok: "Correct — field(default_factory=list) calls list() once per instance, dodging the shared-mutable trap.",
+          no: "A bare `= []` shares one list across instances (the lesson-08 trap); default=list() also shares. Use default_factory=list." },
+    q3: { ok: "Correct — a typing.NamedTuple is a fixed, immutable record that still unpacks like a tuple.",
+          no: "A dataclass mutates by default, and a dict has no fixed shape. The lightweight immutable record is typing.NamedTuple." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 17 — The Zen of Python, applied · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson seventeen: the Zen of Python, applied.
+This is the capstone, so its job is not to teach a new idiom but to tie the sixteen you already met under one philosophy.
+Open a Python prompt and type import this, and you will see a short poem by Tim Peters called the Zen of Python.
+It is real code: a module in the standard library, blessed as PEP twenty, and it is the closest thing Python has to a constitution.
+Almost every idiom in this course is one of its lines made concrete.
+Readability counts is why we write comprehensions and f-strings: the code should read like the sentence describing it.
+There should be one obvious way to do it is why we reach for enumerate, for zip, for with, instead of reinventing each by hand.
+Flat is better than nested is why a guard clause that returns early beats a pyramid of if statements.
+Explicit is better than implicit is why we name our arguments, unpack into named targets, and avoid clever magic.
+And errors should never pass silently is why we catch the specific exception and let the rest crash loudly.
+Now let us replay the highest-value swaps from the whole course, side by side.
+A manual index loop with range and len becomes enumerate, which hands you the index and the value together.
+Checking len of a list greater than zero becomes a plain truthiness test, because an empty container is already falsy.
+Building an empty list, looping, and appending becomes a single comprehension that says what you want, not how to gather it.
+Manually opening and closing a file becomes a with block, so the cleanup happens even when something throws.
+And a class full of getters and setters becomes a dataclass or a property, so attribute access stays simple.
+None of these are tricks; each one is the language meeting you where the problem already is.
+I have left you a compact checklist you can print and keep beside your editor.
+But a checklist only takes you so far, because fluency is not memorised, it is absorbed.
+You become fluent the way you did in your first language: by reading far more than you write, and writing a little every day.
+So read real codebases, the standard library and well-loved open source, and notice the idioms in the wild.
+Join a community like Python Discord or the learnpython subreddit and ask is this idiomatic.
+Take the three synthesis checks below, ask me anything that is still fuzzy, and then go write some Python.
+You have everything you need now, so the only thing left is the reading and the doing.
+</div>
+
+<main>
+  <div class="kicker">Lesson 17 · Idiomatic Python</div>
+  <h1>The Zen of Python, applied</h1>
+  <p class="lede">Sixteen lessons taught you the idioms. This one shows you the
+  single philosophy underneath them — so that "is this Pythonic?" becomes a
+  question you can answer yourself.</p>
+
+  <p>Open any Python prompt and type one line:</p>
+<pre><code><span class="c-kw">import</span> this</code></pre>
+  <p>You'll get a 19-line poem — Tim Peters' <strong>Zen of Python</strong>,
+  enshrined as <a href="https://peps.python.org/pep-0020/">PEP 20</a>. It is real,
+  importable code shipped in the standard library, and it is the closest thing the
+  language has to a constitution. Nearly every idiom in this course is one of its
+  aphorisms made concrete. Let's connect the load-bearing ones to what you already
+  learned.</p>
+
+  <h2>Five aphorisms, five idioms you already know</h2>
+
+  <p><strong>“Readability counts.”</strong> The whole point of a comprehension or
+  an f-string is that the code reads like the sentence that describes it —
+  <code>[n * n for n in nums]</code> says <em>what</em> you want, not the mechanics
+  of gathering it (lessons <strong>01</strong> and <strong>06</strong>).</p>
+
+  <p><strong>“There should be one — and preferably only one — obvious way to do
+  it.”</strong> That obvious way already exists for iterating: reach for
+  <code>enumerate</code>, <code>zip</code>, and <code>with</code> instead of
+  hand-rolling indices, parallel loops, or cleanup (lessons <strong>05</strong>
+  and <strong>09</strong>).</p>
+
+  <p><strong>“Flat is better than nested.”</strong> A guard clause that
+  <code>return</code>s early flattens a pyramid of <code>if</code> blocks; a single
+  comprehension flattens a build-loop-append. When nesting climbs past two levels,
+  the idiom is usually to step back out (lessons <strong>01</strong> and
+  <strong>03</strong>).</p>
+
+  <p><strong>“Explicit is better than implicit.”</strong> Naming keyword arguments,
+  unpacking into named targets, and avoiding clever magic all make intent visible
+  at the call site — the reader shouldn't have to guess (lessons <strong>02</strong>
+  and <strong>08</strong>).</p>
+
+  <p><strong>“Errors should never pass silently.”</strong> The Pythonic style is
+  EAFP — try the thing and catch the <em>specific</em> exception — never a bare
+  <code>except:</code> that swallows everything. Ask forgiveness, but only for the
+  error you expected (lessons <strong>03</strong> and <strong>07</strong>).</p>
+
+  <div class="note"><strong>The unifying idea:</strong> "Pythonic" is not a style
+  preference. It means the code lets the language carry the weight — the data model,
+  the built-ins, the protocols — instead of porting a pattern from somewhere else.</div>
+
+  <h2>Pythonic vs not — the highest-value swaps</h2>
+  <p>If you remember nothing else, remember these five before/after pairs. Each one
+  is a pattern you'd write in many languages, and the form Python prefers instead.</p>
+
+  <div class="contrast">
+    <div class="col other">
+      <h4>Ported pattern</h4>
+<pre><code><span class="c-com"># manual index loop</span>
+<span class="c-kw">for</span> i <span class="c-kw">in</span> <span class="c-fn">range</span>(<span class="c-fn">len</span>(items)):
+    <span class="c-fn">print</span>(i, items[i])</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># enumerate hands you both</span>
+<span class="c-kw">for</span> i, item <span class="c-kw">in</span> <span class="c-fn">enumerate</span>(items):
+    <span class="c-fn">print</span>(i, item)</code></pre>
+    </div>
+  </div>
+
+  <div class="contrast">
+    <div class="col other">
+      <h4>Ported pattern</h4>
+<pre><code><span class="c-com"># compare length to zero</span>
+<span class="c-kw">if</span> <span class="c-fn">len</span>(items) &gt; <span class="c-num">0</span>:
+    handle(items)</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># empty is already falsy</span>
+<span class="c-kw">if</span> items:
+    handle(items)</code></pre>
+    </div>
+  </div>
+
+  <div class="contrast">
+    <div class="col other">
+      <h4>Ported pattern</h4>
+<pre><code><span class="c-com"># build, loop, append</span>
+out = []
+<span class="c-kw">for</span> n <span class="c-kw">in</span> nums:
+    out.append(n * n)</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># one expression</span>
+out = [n * n <span class="c-kw">for</span> n <span class="c-kw">in</span> nums]</code></pre>
+    </div>
+  </div>
+
+  <div class="contrast">
+    <div class="col other">
+      <h4>Ported pattern</h4>
+<pre><code><span class="c-com"># open and close by hand</span>
+f = <span class="c-fn">open</span>(path)
+data = f.read()
+f.close()</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># with closes, even on error</span>
+<span class="c-kw">with</span> <span class="c-fn">open</span>(path) <span class="c-kw">as</span> f:
+    data = f.read()</code></pre>
+    </div>
+  </div>
+
+  <div class="contrast">
+    <div class="col other">
+      <h4>Ported pattern</h4>
+<pre><code><span class="c-com"># getters and setters</span>
+<span class="c-kw">class</span> <span class="c-fn">Point</span>:
+    <span class="c-kw">def</span> <span class="c-fn">get_x</span>(self):
+        <span class="c-kw">return</span> self._x</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># dataclass: plain attributes</span>
+<span class="c-kw">from</span> dataclasses <span class="c-kw">import</span> dataclass
+
+<span class="c-com"># @dataclass</span>
+<span class="c-kw">class</span> <span class="c-fn">Point</span>:
+    x: <span class="c-fn">int</span>; y: <span class="c-fn">int</span></code></pre>
+    </div>
+  </div>
+  <p class="muted">Plain attribute access stays plain; reach for
+  <code>@property</code> only when you need computed or validated access — not by
+  default (lessons <strong>10</strong> and <strong>11</strong>).</p>
+
+  <h2>The idiom checklist — print this</h2>
+  <p>A page to keep beside your editor. Before you call a chunk of Python "done",
+  scan it:</p>
+  <div class="note">
+  <ul>
+    <li><strong>Looping by index?</strong> Use <code>enumerate</code>; for two
+      sequences, <code>zip</code>.</li>
+    <li><strong>Building a collection in a loop?</strong> Try a comprehension or a
+      generator expression first.</li>
+    <li><strong>Checking <code>len(x) &gt; 0</code> or <code>x == None</code>?</strong>
+      Write <code>if x:</code> and <code>if x is None:</code>.</li>
+    <li><strong>Acquiring a resource?</strong> A file, lock, or connection belongs
+      in a <code>with</code> block.</li>
+    <li><strong>Unpacking a tuple by index?</strong> Assign to named targets:
+      <code>x, y = point</code>.</li>
+    <li><strong>Looking before you leap?</strong> Prefer EAFP — <code>try</code>
+      and catch the <em>specific</em> exception.</li>
+    <li><strong>Writing getters/setters?</strong> Use a <code>@dataclass</code>;
+      add <code>@property</code> only when access needs logic.</li>
+    <li><strong>Concatenating strings in a loop?</strong> Collect and
+      <code>"".join(parts)</code>; format with an f-string.</li>
+    <li><strong>Reaching for a default in a dict?</strong> Use <code>.get</code>,
+      <code>setdefault</code>, or <code>defaultdict</code>.</li>
+    <li><strong>Nesting more than two levels?</strong> Flatten with a guard clause
+      or an early <code>return</code>.</li>
+  </ul>
+  </div>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Three quick checks</h2>
+  <p class="muted">Synthesis, not recall — each spans more than one lesson. Answer
+  before you scroll.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. A colleague writes <code>for i in range(len(rows)): use(rows[i])</code>. Which single rewrite is most Pythonic?</div>
+    <button class="opt" data-correct="1">for i, row in enumerate(rows): use(row)</button>
+    <button class="opt">while i &lt; len(rows): use(rows[i]); i += 1</button>
+    <button class="opt">[use(rows[i]) for i in range(len(rows))]</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. Which line best embodies both "explicit is better than implicit" <em>and</em> "errors should never pass silently"?</div>
+    <button class="opt">try: parse(s)\nexcept: pass  # keep going no matter what</button>
+    <button class="opt" data-correct="1">try: parse(s)\nexcept ValueError: log.warning(...)</button>
+    <button class="opt">if is_parseable(s): parse(s)  # check first, then act</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. You wrote a class with <code>get_total()</code> and <code>set_total()</code>. Which "one obvious way" reaction is most Pythonic?</div>
+    <button class="opt" data-correct="1">Use a public attribute; add @property only if it needs logic.</button>
+    <button class="opt">Keep both methods; explicit getters are clearer to readers.</button>
+    <button class="opt">Make total private and expose a get_total wrapper method.</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary sources to keep going:</strong> read the
+  <a href="https://peps.python.org/pep-0020/">Zen of Python (PEP 20)</a> until its
+  lines feel obvious, then the
+  <a href="https://peps.python.org/pep-0008/">style guide (PEP 8)</a> for the
+  community's layout and naming conventions. The single best video remains Raymond
+  Hettinger's <a href="https://www.youtube.com/watch?v=OSGv2VnC0go">“Transforming
+  Code into Beautiful, Idiomatic Python”</a> (PyCon 2013). For book-length depth,
+  Luciano Ramalho's <em>Fluent Python</em> (2nd ed.) explains why each idiom works
+  via the data model. And to ask "is this idiomatic?", the
+  <a href="https://www.pythondiscord.com/">Python Discord</a> and
+  <a href="https://www.reddit.com/r/learnpython/">r/learnpython</a> communities are
+  friendly and fast (all listed in this course's <code>RESOURCES.md</code>).</p>
+
+  <p>One last word: fluency isn't memorised, it's absorbed — exactly the way you
+  learned your first programming language. Read far more Python than you write:
+  the standard library and well-loved open source are full of idioms in the wild.
+  Write a little every day, join a community, and ask for code review. You have all
+  the pieces now. The rest is reading and doing.</p>
+
+  <div class="ask-teacher">💬 <strong>Before you go — ask me anything.</strong>
+  “Which lesson should I re-read first?”, “show me a non-idiomatic snippet and
+  let me fix it”, “what's a good open-source codebase to read for idioms?”. I'm
+  your teacher for this course, and I'm happy to keep going beyond the lessons.</div>
+
+  <div class="lesson-nav">
+    <a href="0016-pattern-matching.html">← Prev: Structural pattern matching</a>
+    <a href="../index.html">🎓 End of course — keep practising</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — enumerate yields the index and the value together, the one obvious way to loop with a counter.",
+          no: "Not quite. The while loop and the index comprehension both keep manual indexing; enumerate replaces it cleanly." },
+    q2: { ok: "Correct — it names the specific exception (explicit) and logs instead of swallowing it (never silent).",
+          no: "Not quite. A bare except hides every error (silent); the look-before-you-leap check isn't the EAFP idiom asked for." },
+    q3: { ok: "Correct — plain attribute access is the default; @property is the escape hatch when access needs logic.",
+          no: "Not quite. Java-style getters/setters and private wrappers are exactly the ported pattern Python replaces." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>

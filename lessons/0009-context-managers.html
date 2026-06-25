@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 09 — Context managers · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson nine: context managers.
+In most languages, when you open a file you must remember to close it, usually in a finally block so it still closes if an exception is thrown.
+Python folds that whole setup-and-teardown dance into one piece of syntax: the with statement.
+You write with open path as f, and the file is guaranteed to close the moment the block ends.
+That guarantee holds even if the body raises an exception, just like a finally clause, but without the boilerplate.
+So the win is deterministic cleanup tied to a block: no manual close, no finally, no leaked handle.
+The as part binds whatever the manager hands back, which for open is the file object itself.
+You can manage several resources in one statement: with open a as fa, open b as fb, and both close cleanly.
+Files are the famous example, but the protocol is everywhere once you start looking.
+A threading Lock is a context manager: with lock acquires it on entry and releases it on exit, even if the body blows up.
+The tempfile module gives you temporary files and directories that clean themselves up when the block ends.
+contextlib suppress lets you swallow a specific exception in one readable line instead of a try except that does nothing.
+And when you want your own manager, the easiest way is the contextlib contextmanager decorator on a generator.
+You write setup, then yield the value, then teardown, and the yield is where the body runs.
+Under the hood, any object with dunder enter and dunder exit can be a context manager, and we will meet those dunder methods properly in the next lesson.
+dunder enter runs on the way in and its return value is what as binds; dunder exit runs on the way out and handles any exception.
+Even the decimal module uses this: decimal localcontext temporarily changes precision just inside the block.
+The mental shift is to stop thinking close it when I am done and start thinking this resource lives exactly as long as this block.
+Whenever you see a try finally whose only job is cleanup, that is usually a context manager waiting to happen.
+Scroll down, take the quick checks, and replay this narration whenever you like.
+When something is unclear, ask me directly. I am your teacher for this course.
+</div>
+
+<main>
+  <div class="kicker">Lesson 09 · Idiomatic Python</div>
+  <h1>Context managers</h1>
+  <p class="lede">One block, guaranteed cleanup. <code>with</code> ties a resource's
+  whole lifetime to a scope — so it's released the instant you leave, exception or not.</p>
+
+  <p>You already know to free what you acquire. The point of this lesson isn't
+  <em>that</em> you must clean up — it's that Python has a dedicated syntax that
+  makes the cleanup automatic and impossible to forget.</p>
+
+  <h2>The pattern Python replaces</h2>
+  <div class="contrast">
+    <div class="col other">
+      <h4>Most languages</h4>
+<pre><code><span class="c-com"># acquire, use, release in finally</span>
+f = <span class="c-fn">open</span>(path)
+<span class="c-kw">try</span>:
+    data = f.read()
+<span class="c-kw">finally</span>:
+    f.close()</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># the file closes for you</span>
+<span class="c-kw">with</span> <span class="c-fn">open</span>(path) <span class="c-kw">as</span> f:
+    data = f.read()</code></pre>
+    </div>
+  </div>
+
+  <p>Read it as: <strong>“<code>open(path)</code> for the duration of this
+  block, called <code>f</code>.”</strong> When the block ends — whether it falls
+  off the bottom, <code>return</code>s, or <strong>raises</strong> — the file is
+  closed. The <code>finally</code> is built in.</p>
+
+  <div class="note"><strong>The mental shift:</strong> stop thinking “close it when
+  I'm done” and start thinking “this resource lives exactly as long as this
+  block.” The <code>with</code> statement makes the resource's lifetime visible in
+  the indentation.</div>
+
+  <h2>The <code>as</code> binds the entry value</h2>
+  <p>The thing after <code>as</code> is whatever the manager hands back on entry —
+  for <code>open</code> that's the file object, but it isn't always the same object
+  you called <code>with</code> on. A manager can return anything useful:</p>
+<pre><code><span class="c-kw">with</span> <span class="c-fn">open</span>(path) <span class="c-kw">as</span> f:        <span class="c-com"># f is the file object</span>
+    <span class="c-kw">for</span> line <span class="c-kw">in</span> f:
+        process(line)</code></pre>
+  <p>You can also use a manager with no <code>as</code> at all when you only care
+  about its side effect (a lock, a timer, a redirect).</p>
+
+  <h2>Managing several resources at once</h2>
+<pre><code><span class="c-com"># both files close, in reverse order, no matter what</span>
+<span class="c-kw">with</span> <span class="c-fn">open</span>(src) <span class="c-kw">as</span> fa, <span class="c-fn">open</span>(dst, <span class="c-str">"w"</span>) <span class="c-kw">as</span> fb:
+    fb.write(fa.read())</code></pre>
+  <p>Comma-separate the managers in one <code>with</code>. They're entered
+  left-to-right and exited right-to-left, so <code>fb</code> closes before
+  <code>fa</code>. (For long lists, parenthesise across lines on 3.10+.)</p>
+
+  <h2>Managers you'll meet constantly</h2>
+<pre><code><span class="c-com"># a lock: acquired on entry, released on exit — even on error</span>
+<span class="c-kw">with</span> lock:
+    counter += <span class="c-num">1</span>
+
+<span class="c-com"># a self-cleaning temp directory</span>
+<span class="c-kw">import</span> tempfile
+<span class="c-kw">with</span> tempfile.TemporaryDirectory() <span class="c-kw">as</span> d:
+    work_in(d)            <span class="c-com"># d and its contents vanish at block end</span>
+
+<span class="c-com"># swallow exactly one expected error, no empty except</span>
+<span class="c-kw">from</span> contextlib <span class="c-kw">import</span> suppress
+<span class="c-kw">with</span> suppress(FileNotFoundError):
+    os.remove(stale)</code></pre>
+  <p><code>threading.Lock</code>, <code>tempfile</code>, and
+  <code>contextlib.suppress</code> all speak the same protocol as <code>open</code>.
+  Once you recognise the shape, <code>with</code> reads as “do this safely, then
+  tidy up.”</p>
+
+  <h2>Writing your own — the easy way</h2>
+  <p>You rarely need a class. <code>contextlib.contextmanager</code> turns a
+  generator into a manager: everything before <code>yield</code> is setup,
+  everything after is teardown, and <code>yield</code> is where the body runs.</p>
+<pre><code><span class="c-kw">from</span> contextlib <span class="c-kw">import</span> contextmanager
+
+<span class="c-fn">@contextmanager</span>
+<span class="c-kw">def</span> <span class="c-fn">timed</span>(label):
+    start = time.perf_counter()
+    <span class="c-kw">try</span>:
+        <span class="c-kw">yield</span>                       <span class="c-com"># the with-block runs here</span>
+    <span class="c-kw">finally</span>:
+        dt = time.perf_counter() - start
+        <span class="c-fn">print</span>(f<span class="c-str">"{label}: {dt:.3f}s"</span>)
+
+<span class="c-kw">with</span> timed(<span class="c-str">"load"</span>):
+    rows = load()</code></pre>
+  <p>The <code>finally</code> around the <code>yield</code> guarantees teardown
+  even if the block raises — the same safety <code>open</code> gives you, now in
+  your own code. Whatever you <code>yield</code> becomes the <code>as</code> value.</p>
+
+  <h2>The protocol underneath</h2>
+  <p>Any object is a context manager if it defines two methods:
+  <code>__enter__</code> runs on the way in and its return value is what
+  <code>as</code> binds; <code>__exit__</code> runs on the way out and receives any
+  exception so it can clean up (and, if it chooses, suppress it).</p>
+  <p class="muted">These are <em>dunder</em> methods — part of Python's data model.
+  We meet them properly in the next lesson; for now, just know <code>with</code>
+  calls them for you. Even <code>decimal.localcontext()</code> uses this to restore
+  precision when its block ends.</p>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Three quick checks</h2>
+  <p class="muted">Recall beats recognition — answer before you scroll. Immediate
+  feedback below each.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. The body of a <code>with open(path) as f:</code> block raises an exception. What happens to the file?</div>
+    <button class="opt" data-correct="1">It is still closed automatically as the block exits.</button>
+    <button class="opt">It stays open until you call f.close() by hand.</button>
+    <button class="opt">It closes only if you wrap it in a finally clause.</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. In <code>@contextmanager</code> generator, where does the <code>with</code>-block body run?</div>
+    <button class="opt">In the lines written before the yield statement.</button>
+    <button class="opt" data-correct="1">At the yield, between setup and the teardown.</button>
+    <button class="opt">In a finally clause that runs after return.</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. In <code>with open(p) as f:</code>, what exactly does <code>f</code> get bound to?</div>
+    <button class="opt" data-correct="1">Whatever __enter__ returns — here, the file object.</button>
+    <button class="opt">Always the same object passed to with itself.</button>
+    <button class="opt">The value that __exit__ returns when leaving.</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary source to go deeper:</strong> the official language reference on
+  <a href="https://docs.python.org/3/reference/compound_stmts.html#the-with-statement">the
+  <code>with</code> statement</a> — exactly how entry, binding, and exit are
+  sequenced — paired with
+  <a href="https://docs.python.org/3/library/contextlib.html">the <code>contextlib</code>
+  module docs</a> for <code>contextmanager</code>, <code>suppress</code>, and the
+  helpers that make your own managers trivial.</p>
+
+  <div class="ask-teacher">💬 <strong>Stuck or curious?</strong> Ask me directly —
+  “when should I write a class instead of <code>@contextmanager</code>?”, “how does
+  <code>__exit__</code> suppress an exception?”, “what does
+  <code>contextlib.ExitStack</code> do?”. I'm your teacher for this course, and the
+  next lesson adapts to what you ask.</div>
+
+  <div class="lesson-nav">
+    <a href="0008-function-arguments.html">← Prev: Function arguments</a>
+    <a href="0010-data-model-dunders.html">Next: The data model &amp; dunder methods →</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — `with` guarantees the file closes on the way out, exception or not. That's the whole point: the `finally` is built in.",
+          no: "No — `with` always closes on exit, including when the body raises. You don't add `finally` or call `close()` yourself." },
+    q2: { ok: "Correct — code before `yield` is setup, the body runs at the `yield`, code after (in `finally`) is teardown.",
+          no: "Not quite. The `with`-block runs at the `yield`; setup is before it and teardown is after it." },
+    q3: { ok: "Correct — `as` binds the return value of `__enter__`, which for a file is the file object itself.",
+          no: "No — `as` binds whatever `__enter__` returns, not the `with` argument and not `__exit__`'s result." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 01 — Comprehensions · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson one: comprehensions.
+This is the single most recognisable piece of Python syntax, so it is the fastest win toward reading Python fluently.
+In most languages, to build a new list from an old one, you create an empty list, write a loop, and append inside it.
+Python collapses that whole pattern into one expression called a list comprehension.
+You read it left to right as: the thing I want, for each item, from this source, optionally where a condition holds.
+So, square brackets, n times n, for n in numbers, gives you a list of squares.
+Add an if clause at the end to filter: n times n, for n in numbers, if n is even.
+The key mental shift is that a comprehension is an expression, not a statement.
+It evaluates to a value, so you can pass it straight to a function or return it directly.
+The same shape works for dictionaries and sets: swap the square brackets for curly braces.
+Curly braces with a key colon value pair build a dict; curly braces with single values build a set.
+Now the most important variant for an experienced programmer: the generator expression.
+Swap the square brackets for round brackets and nothing is built in memory.
+Instead you get a lazy iterator that produces one value at a time, only as it is consumed.
+That means sum of n times n for n in a billion numbers uses almost no memory, because values flow through one at a time.
+When you pass a generator expression as the only argument to a function, you can even drop the extra parentheses.
+A word of restraint: comprehensions are for building a collection from an expression.
+If the body has side effects, or you are nesting two or more loops with conditions, a plain for loop reads better.
+The Zen of Python says flat is better than nested, and readability counts.
+Scroll down, take the three quick checks, and watch the narrated walkthrough you can replay any time.
+When something is unclear, ask me directly. I am your teacher for this course.
+</div>
+
+<main>
+  <div class="kicker">Lesson 01 · Idiomatic Python</div>
+  <h1>Comprehensions</h1>
+  <p class="lede">The most recognisable line of Python you'll ever read — and
+  the fastest way to start writing Python that looks native instead of ported.</p>
+
+  <p>You already know how to transform a collection. The point of this lesson is
+  not <em>that</em> you can — it's to make Python's one-line form so automatic
+  that you read and write it without slowing down.</p>
+
+  <h2>The pattern Python replaces</h2>
+  <div class="contrast">
+    <div class="col other">
+      <h4>Most languages</h4>
+<pre><code><span class="c-com"># build, loop, append</span>
+squares = []
+<span class="c-kw">for</span> n <span class="c-kw">in</span> numbers:
+    squares.append(n * n)</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># one expression</span>
+squares = [n * n <span class="c-kw">for</span> n <span class="c-kw">in</span> numbers]</code></pre>
+    </div>
+  </div>
+
+  <p>Read it left-to-right as a sentence: <strong>“<code>n * n</code> — for each
+  <code>n</code> in <code>numbers</code>.”</strong> The expression comes first
+  because the <em>result</em> is what you care about, not the mechanics.</p>
+
+  <h2>Filtering: the trailing <code>if</code></h2>
+<pre><code>evens   = [n      <span class="c-kw">for</span> n <span class="c-kw">in</span> numbers <span class="c-kw">if</span> n % <span class="c-num">2</span> == <span class="c-num">0</span>]
+labels  = [f<span class="c-str">"#{n}"</span> <span class="c-kw">for</span> n <span class="c-kw">in</span> numbers <span class="c-kw">if</span> n &gt; <span class="c-num">0</span>]</code></pre>
+  <p>A trailing <code>if</code> <em>selects</em> which items make it through. (An
+  <code>if</code>/<code>else</code> placed <em>before</em> the <code>for</code> is
+  a different thing — a conditional expression that transforms each item — a
+  later lesson.)</p>
+
+  <div class="note"><strong>The mental shift:</strong> a comprehension is an
+  <em>expression</em>, not a statement. It evaluates to a value, so you can
+  <code>return</code> it, pass it to a function, or nest it directly — no
+  temporary variable required.</div>
+
+  <h2>Same shape, three containers</h2>
+<pre><code><span class="c-com"># list  — square brackets</span>
+[n * n <span class="c-kw">for</span> n <span class="c-kw">in</span> nums]
+
+<span class="c-com"># set   — curly braces, single values (deduplicates)</span>
+{n % <span class="c-num">10</span> <span class="c-kw">for</span> n <span class="c-kw">in</span> nums}
+
+<span class="c-com"># dict  — curly braces, key: value pairs</span>
+{n: n * n <span class="c-kw">for</span> n <span class="c-kw">in</span> nums}</code></pre>
+
+  <h2>The one that matters most: generator expressions</h2>
+  <p>Swap the square brackets for <strong>round</strong> ones and nothing is built
+  in memory. You get a <em>lazy iterator</em> that yields one value at a time, as
+  it's consumed:</p>
+<pre><code><span class="c-com"># list comp: builds a million-item list in memory</span>
+total = <span class="c-fn">sum</span>([n * n <span class="c-kw">for</span> n <span class="c-kw">in</span> <span class="c-fn">range</span>(<span class="c-num">1_000_000</span>)])
+
+<span class="c-com"># generator: values flow through one at a time — near-zero memory</span>
+total = <span class="c-fn">sum</span>(n * n <span class="c-kw">for</span> n <span class="c-kw">in</span> <span class="c-fn">range</span>(<span class="c-num">1_000_000</span>))</code></pre>
+  <p>When the generator expression is the <em>only</em> argument to a function,
+  you drop the extra parentheses — as above. This is everyday idiomatic Python:
+  reach for a generator when you're feeding a pipeline (<code>sum</code>,
+  <code>any</code>, <code>max</code>, <code>"".join(...)</code>) rather than
+  keeping the whole collection.</p>
+
+  <h2>When <em>not</em> to use one</h2>
+  <p>Comprehensions are for building a collection from an expression. Step back to
+  a plain <code>for</code> loop when:</p>
+  <ul>
+    <li>the body has <strong>side effects</strong> (logging, writing, mutating) —
+      a comprehension built only for its side effects is a code smell;</li>
+    <li>you'd nest <strong>two or more</strong> <code>for</code>/<code>if</code>
+      clauses and it stops reading like a sentence.</li>
+  </ul>
+  <p class="muted">“Flat is better than nested. Readability counts.” — the Zen of
+  Python (<a href="https://peps.python.org/pep-0020/">PEP 20</a>).</p>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Three quick checks</h2>
+  <p class="muted">Recall beats recognition — answer before you scroll. Immediate
+  feedback below each.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. Which expression squares only the even numbers in <code>nums</code>?</div>
+    <button class="opt" data-correct="1">[n * n for n in nums if n % 2 == 0]</button>
+    <button class="opt">[n * n if n % 2 == 0 for n in nums]</button>
+    <button class="opt">(n * n for n in nums while n % 2)</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. Which one builds <strong>nothing</strong> in memory up front?</div>
+    <button class="opt">total = sum([n for n in big_range])</button>
+    <button class="opt" data-correct="1">total = sum(n for n in big_range)</button>
+    <button class="opt">total = sum({n for n in big_range})</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. What does <code>{w: len(w) for w in words}</code> produce?</div>
+    <button class="opt" data-correct="1">a dict mapping each word to its length</button>
+    <button class="opt">a set holding the lengths of each word</button>
+    <button class="opt">a list pairing each word and length</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary source to go deeper:</strong> Raymond Hettinger,
+  <a href="https://www.youtube.com/watch?v=OSGv2VnC0go">“Transforming Code into
+  Beautiful, Idiomatic Python”</a> (PyCon 2013) — a core developer showing the
+  exact before/after this lesson is built on. Reference:
+  <a href="https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions">the
+  official tutorial on comprehensions</a>.</p>
+
+  <div class="ask-teacher">💬 <strong>Stuck or curious?</strong> Ask me directly —
+  “why is a generator lazy?”, “show me a nested one”, “when would I use a set
+  comprehension?”. I'm your teacher for this course, and the next lesson adapts to
+  what you ask.</div>
+
+  <div class="lesson-nav">
+    <span>← (start of course)</span>
+    <a href="0002-unpacking-and-assignment.html">Next: Unpacking &amp; multiple assignment →</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — the filter goes at the end. The middle option is a SyntaxError (if/else before `for` may not have a trailing `if`).",
+          no: "Not quite. The trailing `if` filters; an `if` before `for` can't stand alone. Answer: the first one." },
+    q2: { ok: "Correct — round brackets make a lazy generator; values flow through `sum` one at a time.",
+          no: "That builds a whole collection first. The generator (round brackets, no inner list) is the memory-free one." },
+    q3: { ok: "Correct — curly braces with `key: value` build a dict.",
+          no: "Curly braces with a `key: value` pair build a dict, not a set or list." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>

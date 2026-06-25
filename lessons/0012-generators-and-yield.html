@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 12 — Generators &amp; yield · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson twelve: generators and yield.
+Back in lesson one you met the generator expression: round brackets that produce values lazily, one at a time.
+This lesson gives you the function form of that same laziness, and it is one of Python's most distinctive tools.
+The rule is simple: if a function body contains the keyword yield, it is a generator function.
+Calling it does not run the body at all; instead it hands you back a lazy generator object.
+Nothing happens until something iterates that object, asking for the first value.
+When you do, the body runs until it hits a yield, hands that value out, and then freezes.
+All the local variables stay alive, exactly where they were, until you ask for the next value.
+So yield is like a return that remembers its place and resumes from there.
+This is why generators can model infinite streams: a while True loop that yields forever uses constant memory.
+You never build the whole sequence, you just describe how to produce the next item.
+To take a finite slice of an infinite generator, reach for itertools dot islice.
+The real payoff is pipelines: chain small generators so data flows through filter and transform stages.
+Each stage pulls one item from the stage before it, so no intermediate list is ever built.
+When one generator wants to hand off to another, write yield from, and the sub-generator's values flow straight through.
+Remember that a generator is a one-shot iterator: once consumed, it is exhausted, and looping again gives you nothing.
+If you need the data twice, either keep a list or call the generator function again to get a fresh one.
+The standard library module itertools is your toolbox here: count, islice, and chain compose with any generator.
+Think of generators as the function form of the lazy expressions you already know.
+Scroll down, take the quick checks, and watch the narrated walkthrough whenever you like.
+And when something is unclear, ask me directly. I am your teacher for this course.
+</div>
+
+<main>
+  <div class="kicker">Lesson 12 · Idiomatic Python</div>
+  <h1>Generators &amp; yield</h1>
+  <p class="lede">Write a function that <em>produces</em> a stream instead of
+  returning a finished collection — lazy, resumable, and constant-memory, even
+  over infinite data.</p>
+
+  <p>In lesson 01 you met the generator <em>expression</em>: round brackets that
+  yield values one at a time. This lesson is the same laziness in <strong>function
+  form</strong>. The moment a function contains <code>yield</code>, it stops being
+  an ordinary function and becomes a <em>generator function</em>.</p>
+
+  <h2>The pattern Python replaces</h2>
+  <div class="contrast">
+    <div class="col other">
+      <h4>Most languages</h4>
+<pre><code><span class="c-com"># build the whole list, then return</span>
+<span class="c-kw">def</span> <span class="c-fn">squares</span>(nums):
+    out = []
+    <span class="c-kw">for</span> n <span class="c-kw">in</span> nums:
+        out.append(n * n)
+    <span class="c-kw">return</span> out</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># produce values lazily, one at a time</span>
+<span class="c-kw">def</span> <span class="c-fn">squares</span>(nums):
+    <span class="c-kw">for</span> n <span class="c-kw">in</span> nums:
+        <span class="c-kw">yield</span> n * n</code></pre>
+    </div>
+  </div>
+
+  <p>Calling <code>squares(nums)</code> runs <strong>none</strong> of the body. It
+  returns a <em>generator object</em> — a paused, lazy iterator. The body only
+  advances when something asks for a value (a <code>for</code> loop,
+  <code>next()</code>, <code>sum()</code>, <code>list()</code>, …).</p>
+
+  <div class="note"><strong>The mental shift:</strong> <code>yield</code> is a
+  <code>return</code> that <em>remembers its place</em>. The function suspends at
+  the <code>yield</code>, hands one value out, and resumes from that exact line —
+  with every local variable intact — when the next value is requested.</div>
+
+  <h2>Suspend, resume, repeat</h2>
+<pre><code><span class="c-kw">def</span> <span class="c-fn">countdown</span>(n):
+    <span class="c-kw">while</span> n &gt; <span class="c-num">0</span>:
+        <span class="c-kw">yield</span> n      <span class="c-com"># hand out n, then freeze here</span>
+        n -= <span class="c-num">1</span>       <span class="c-com"># resumes here on the next request</span>
+
+g = <span class="c-fn">countdown</span>(<span class="c-num">3</span>)   <span class="c-com"># nothing has run yet</span>
+<span class="c-fn">next</span>(g)              <span class="c-com"># 3</span>
+<span class="c-fn">next</span>(g)              <span class="c-com"># 2  — n survived between calls</span>
+<span class="c-fn">list</span>(g)              <span class="c-com"># [1] — drains the rest</span></code></pre>
+
+  <h2>Lazy by nature: infinite streams, constant memory</h2>
+  <p>Because values are produced on demand, a generator can describe an
+  <strong>infinite</strong> sequence without ever building it. You take only as
+  much as you consume:</p>
+<pre><code><span class="c-kw">import</span> itertools
+
+<span class="c-kw">def</span> <span class="c-fn">counter</span>(start=<span class="c-num">0</span>):
+    n = start
+    <span class="c-kw">while</span> <span class="c-kw">True</span>:        <span class="c-com"># never stops on its own</span>
+        <span class="c-kw">yield</span> n
+        n += <span class="c-num">1</span>
+
+<span class="c-com"># take a finite slice of an infinite stream</span>
+first10 = <span class="c-fn">list</span>(itertools.islice(<span class="c-fn">counter</span>(), <span class="c-num">10</span>))
+<span class="c-com"># [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]</span></code></pre>
+  <p><code>itertools.islice(it, 10)</code> is the lazy equivalent of slicing — it
+  pulls exactly ten items, then stops asking. The generator never runs further
+  than you make it.</p>
+
+  <h2>Pipelines: chain generators, build no lists</h2>
+  <p>The everyday win is composing small generators into a pipeline. Each stage
+  pulls one item from the stage before it, so <strong>no intermediate list</strong>
+  is ever materialised — even over a huge file:</p>
+<pre><code><span class="c-kw">def</span> <span class="c-fn">read_lines</span>(path):
+    <span class="c-kw">with</span> <span class="c-fn">open</span>(path) <span class="c-kw">as</span> f:
+        <span class="c-kw">for</span> line <span class="c-kw">in</span> f:
+            <span class="c-kw">yield</span> line.rstrip(<span class="c-str">"\n"</span>)
+
+<span class="c-kw">def</span> <span class="c-fn">nonblank</span>(lines):
+    <span class="c-kw">for</span> line <span class="c-kw">in</span> lines:
+        <span class="c-kw">if</span> line:
+            <span class="c-kw">yield</span> line
+
+<span class="c-kw">def</span> <span class="c-fn">upper</span>(lines):
+    <span class="c-kw">for</span> line <span class="c-kw">in</span> lines:
+        <span class="c-kw">yield</span> line.upper()
+
+<span class="c-com"># lines flow through filter -&gt; transform, one at a time</span>
+pipeline = <span class="c-fn">upper</span>(<span class="c-fn">nonblank</span>(<span class="c-fn">read_lines</span>(<span class="c-str">"big.txt"</span>)))
+<span class="c-kw">for</span> line <span class="c-kw">in</span> pipeline:
+    <span class="c-fn">print</span>(line)</code></pre>
+
+  <h2>Delegating with <code>yield from</code></h2>
+  <p>When a generator wants to hand off to another iterable, <code>yield from</code>
+  splices its values straight through — no manual re-loop:</p>
+<pre><code><span class="c-kw">def</span> <span class="c-fn">flatten</span>(chunks):
+    <span class="c-kw">for</span> chunk <span class="c-kw">in</span> chunks:
+        <span class="c-kw">yield from</span> chunk          <span class="c-com"># yield each item of chunk</span>
+
+<span class="c-fn">list</span>(<span class="c-fn">flatten</span>([[<span class="c-num">1</span>, <span class="c-num">2</span>], [<span class="c-num">3</span>], [<span class="c-num">4</span>, <span class="c-num">5</span>]]))   <span class="c-com"># [1, 2, 3, 4, 5]</span></code></pre>
+  <p><code>yield from sub</code> is equivalent to <code>for x in sub: yield x</code>
+  (and, for generators, also forwards return values and <code>send()</code>) — but
+  it reads as a single intention: <em>delegate</em>.</p>
+
+  <h2>One-shot only</h2>
+  <p>A generator is an iterator, and iterators are <strong>exhausted</strong> once
+  consumed. There's no rewind:</p>
+<pre><code>g = <span class="c-fn">squares</span>([<span class="c-num">1</span>, <span class="c-num">2</span>, <span class="c-num">3</span>])
+<span class="c-fn">sum</span>(g)     <span class="c-com"># 14 — drains it</span>
+<span class="c-fn">sum</span>(g)     <span class="c-com"># 0  — already empty!</span></code></pre>
+  <p>If you need the values twice, either keep a <code>list(...)</code> or call the
+  generator function again to get a fresh, rewound generator.</p>
+
+  <div class="note"><strong>Toolbox:</strong> the <code>itertools</code> module
+  composes with any generator. <code>count()</code> is an infinite counter,
+  <code>islice()</code> takes a lazy slice, and <code>chain()</code> concatenates
+  iterables end to end — all without building a list.</div>
+
+  <p class="muted">Tie-back: a generator <em>expression</em>
+  <code>(n*n for n in nums)</code> and a generator <em>function</em> with
+  <code>yield</code> are the same laziness in two shapes. Reach for the expression
+  for a one-liner; reach for <code>yield</code> when the producer needs real logic,
+  state, or multiple stages.</p>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Quick checks</h2>
+  <p class="muted">Recall beats recognition — answer before you scroll. Immediate
+  feedback below each.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. What does calling a function whose body contains <code>yield</code> do?</div>
+    <button class="opt">runs the whole body and returns the final list</button>
+    <button class="opt" data-correct="1">returns a lazy generator; no body runs yet</button>
+    <button class="opt">raises an error unless you also return a value</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. You have <code>def counter():</code> with <code>while True: yield n</code>. How do you safely grab the first 5 values?</div>
+    <button class="opt">list(counter())[0:5] reads five then stops</button>
+    <button class="opt" data-correct="1">list(itertools.islice(counter(), 5)) — lazy slice</button>
+    <button class="opt">counter()[:5] slices the generator directly</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. After <code>g = squares(nums)</code>, you run <code>sum(g)</code> then <code>sum(g)</code> again. What's the second result?</div>
+    <button class="opt">the same total as the first call again</button>
+    <button class="opt">an error because g was already closed</button>
+    <button class="opt" data-correct="1">0 — the generator is exhausted, one-shot</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary source to go deeper:</strong> the official Python tutorial,
+  <a href="https://docs.python.org/3/tutorial/classes.html#generators">“Generators”</a>
+  — the canonical introduction to <code>yield</code> and lazy iterators. For the
+  composable toolbox, see the
+  <a href="https://docs.python.org/3/library/itertools.html"><code>itertools</code>
+  module reference</a> (<code>count</code>, <code>islice</code>, <code>chain</code>).</p>
+
+  <div class="ask-teacher">💬 <strong>Stuck or curious?</strong> Ask me directly —
+  “when should I use <code>yield from</code> vs a plain loop?”, “how do generators
+  stay constant-memory over a 10GB file?”, “what's the difference between a
+  generator expression and a generator function?”. I'm your teacher for this
+  course, and the next lesson adapts to what you ask.</div>
+
+  <div class="lesson-nav">
+    <a href="0011-decorators.html">← Prev: Decorators</a>
+    <a href="0013-dataclasses-namedtuples.html">Next: Dataclasses &amp; named tuples →</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — `yield` makes it a generator function; calling it just hands back a paused generator. The body runs only when you iterate.",
+          no: "Not quite. With `yield` present, calling the function runs nothing — it returns a lazy generator. The body advances only on iteration." },
+    q2: { ok: "Correct — `itertools.islice` pulls exactly five items lazily, so an infinite generator never overruns.",
+          no: "An infinite generator can't be `list()`-ed or sliced with `[:5]` — both try to consume it forever. Use `itertools.islice`." },
+    q3: { ok: "Correct — generators are one-shot iterators. Once `sum` drains it, a second pass sees nothing, so the sum is 0.",
+          no: "Generators don't rewind. The first `sum` exhausts it; the second sees an empty iterator and returns 0." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>

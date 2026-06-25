@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 10 — The data model &amp; dunder methods · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson ten: the data model and dunder methods.
+Here is the big idea that makes Python feel coherent once it clicks.
+Python has no keyword for operator overloading and no special interface you declare.
+Instead, the language defines a set of named methods, written with double underscores, that the syntax quietly calls for you.
+We call these dunder methods, short for double underscore.
+When you write len of x, Python calls x dot dunder len.
+When you write a plus b, Python calls a dot dunder add of b.
+The builtins already implement these methods, which is why lists, strings, and dicts feel native.
+Your own classes opt in by implementing the very same protocol.
+Let us build one small class, a two dimensional vector, and make it feel built in.
+First, dunder repr: it returns an unambiguous, developer facing string, ideally one you could paste back to recreate the object.
+Dunder str is the friendly version for end users, and if you skip it, str falls back to repr.
+So implement repr first; it is the one that helps you in the debugger and the REPL.
+Next, dunder eq gives you value equality, so two vectors with the same components compare equal.
+If you define dunder eq and want the object to stay hashable for sets and dict keys, you must also define dunder hash.
+Dunder len lets len of your object work, and dunder bool decides truthiness, falling back to len when absent.
+Dunder iter makes the object iterable in a for loop, and dunder getitem makes it indexable and sliceable.
+Dunder add overloads the plus operator, and dunder lt defines less than, which sorting uses.
+You rarely write all six comparison methods by hand; functools dot total ordering fills in the rest from a couple you provide.
+The philosophy is simple: builtins reach these methods through syntax, and your classes join in by implementing the same names.
+Scroll down, take the quick checks, and replay this walkthrough whenever you like.
+When something is unclear, ask me directly. I am your teacher for this course.
+</div>
+
+<main>
+  <div class="kicker">Lesson 10 · Idiomatic Python</div>
+  <h1>The data model &amp; dunder methods</h1>
+  <p class="lede">Python has no <code>operator+</code> keyword and no interface to
+  declare. You make your objects feel native by implementing the same named
+  methods the language already calls on its builtins.</p>
+
+  <p>You know how to define a class. The point of this lesson isn't <em>that</em>
+  you can add behaviour — it's the realisation that <code>len(x)</code>,
+  <code>a + b</code>, <code>for i in x</code>, and <code>x == y</code> are all just
+  syntax that calls specially named methods. Implement those methods and your
+  class plugs straight into the language.</p>
+
+  <h2>The one idea: syntax calls dunder methods</h2>
+  <div class="contrast">
+    <div class="col other">
+      <h4>Many languages</h4>
+<pre><code><span class="c-com">// keywords / special interfaces</span>
+operator + (a, b) { ... }
+class V : IComparable { ... }</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># the syntax calls a named method</span>
+<span class="c-fn">len</span>(x)   <span class="c-com"># → x.__len__()</span>
+a + b    <span class="c-com"># → a.__add__(b)</span></code></pre>
+    </div>
+  </div>
+
+  <p>These double-underscore methods are called <strong>dunders</strong>. The
+  builtins implement them — that's why a <code>list</code> already responds to
+  <code>len()</code>, <code>+</code>, and <code>in</code>. Your class opts into the
+  exact same protocol by defining the same names.</p>
+
+  <h2>Our one class: a 2-D vector</h2>
+<pre><code><span class="c-kw">class</span> <span class="c-fn">Vector</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(self, x, y):
+        self.x, self.y = x, y</code></pre>
+  <p>Right now <code>print(Vector(1, 2))</code> shows something like
+  <code>&lt;Vector object at 0x10f...&gt;</code> — useless. Let's fix that first.</p>
+
+  <h2><code>__repr__</code> vs <code>__str__</code></h2>
+  <p><code>repr()</code> is for <em>developers</em>: it should be
+  <strong>unambiguous</strong>, and ideally a string you could paste back to
+  recreate the object. <code>str()</code> is the <em>friendly</em> form for end
+  users. If you only write one, write <code>__repr__</code> — <code>str()</code>
+  falls back to it.</p>
+<pre><code>    <span class="c-kw">def</span> <span class="c-fn">__repr__</span>(self):
+        <span class="c-kw">return</span> f<span class="c-str">"Vector({self.x!r}, {self.y!r})"</span></code></pre>
+  <div class="note"><strong>Why <code>!r</code>:</strong> the <code>!r</code>
+  conversion calls <code>repr()</code> on each field, so strings keep their quotes
+  and the result round-trips. This is the one dunder to implement on every class.</div>
+
+  <h2><code>__eq__</code> — and pairing it with <code>__hash__</code></h2>
+  <p>By default two distinct objects are never equal. Define <code>__eq__</code> to
+  get <strong>value equality</strong>:</p>
+<pre><code>    <span class="c-kw">def</span> <span class="c-fn">__eq__</span>(self, other):
+        <span class="c-kw">if</span> <span class="c-kw">not</span> <span class="c-fn">isinstance</span>(other, Vector):
+            <span class="c-kw">return</span> NotImplemented
+        <span class="c-kw">return</span> (self.x, self.y) == (other.x, other.y)
+
+    <span class="c-kw">def</span> <span class="c-fn">__hash__</span>(self):
+        <span class="c-kw">return</span> <span class="c-fn">hash</span>((self.x, self.y))</code></pre>
+  <div class="note"><strong>The trap:</strong> defining <code>__eq__</code> sets
+  <code>__hash__</code> to <code>None</code>, making instances <em>unhashable</em> —
+  they can't go in a <code>set</code> or be <code>dict</code> keys. If your value is
+  immutable, define <code>__hash__</code> too, and keep the rule: equal objects
+  must hash equal. Returning <code>NotImplemented</code> (not raising) lets Python
+  try the other operand's <code>__eq__</code>.</div>
+
+  <h2><code>__len__</code> and <code>__bool__</code></h2>
+  <p>For a 2-D vector, "length" naturally means its dimension count, and
+  "truthiness" means non-zero. <code>len(obj)</code> calls <code>__len__</code>;
+  truthiness checks call <code>__bool__</code>, which <em>falls back to</em>
+  <code>__len__</code> when absent:</p>
+<pre><code>    <span class="c-kw">def</span> <span class="c-fn">__len__</span>(self):
+        <span class="c-kw">return</span> <span class="c-num">2</span>
+
+    <span class="c-kw">def</span> <span class="c-fn">__bool__</span>(self):
+        <span class="c-kw">return</span> <span class="c-fn">bool</span>(self.x <span class="c-kw">or</span> self.y)</code></pre>
+  <p>So <code>bool(Vector(0, 0))</code> is <code>False</code>, and an
+  <code>if vector:</code> test reads naturally — no <code>len(...) != 0</code> in
+  sight.</p>
+
+  <h2><code>__iter__</code> / <code>__getitem__</code> — iterable &amp; indexable</h2>
+  <p>Define <code>__iter__</code> and the object works in a <code>for</code> loop,
+  in unpacking, and anywhere an iterable is accepted. Define
+  <code>__getitem__</code> and it supports indexing — and slicing — too:</p>
+<pre><code>    <span class="c-kw">def</span> <span class="c-fn">__iter__</span>(self):
+        <span class="c-kw">yield</span> self.x
+        <span class="c-kw">yield</span> self.y
+
+    <span class="c-kw">def</span> <span class="c-fn">__getitem__</span>(self, i):
+        <span class="c-kw">return</span> (self.x, self.y)[i]</code></pre>
+  <p>Now <code>x, y = vector</code> unpacks, <code>vector[0]</code> indexes, and
+  <code>vector[:1]</code> slices — because indexing into a tuple already supports
+  slices. This ties straight back to the iteration and slicing lessons.</p>
+
+  <h2>Operator overloading: <code>__add__</code> and <code>__lt__</code></h2>
+<pre><code>    <span class="c-kw">def</span> <span class="c-fn">__add__</span>(self, other):
+        <span class="c-kw">return</span> Vector(self.x + other.x, self.y + other.y)
+
+    <span class="c-kw">def</span> <span class="c-fn">__lt__</span>(self, other):
+        <span class="c-kw">return</span> (self.x, self.y) &lt; (other.x, other.y)</code></pre>
+  <p>Now <code>Vector(1, 2) + Vector(3, 4)</code> gives <code>Vector(4, 6)</code>,
+  and a list of vectors will <code>sort()</code> — because sorting only needs
+  <code>&lt;</code>, i.e. <code>__lt__</code>.</p>
+  <div class="note"><strong>Don't hand-write all six:</strong> the comparison
+  operators (<code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>,
+  <code>&gt;=</code>, <code>==</code>, <code>!=</code>) are tedious to define one by
+  one. Decorate the class with <code>@functools.total_ordering</code> and supply
+  just <code>__eq__</code> plus one ordering method (e.g. <code>__lt__</code>); it
+  fills in the rest.</div>
+
+  <p class="muted">The philosophy in one line: we call these methods on builtins
+  <em>via syntax</em>; your classes opt in by implementing the same protocol.</p>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Three quick checks</h2>
+  <p class="muted">Recall beats recognition — answer before you scroll. Immediate
+  feedback below each.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. When you write <code>len(v)</code>, what does Python actually call?</div>
+    <button class="opt" data-correct="1">v.__len__() — len() delegates to the dunder method</button>
+    <button class="opt">len.__call__(v) — len reads the object's size field</button>
+    <button class="opt">v.__size__() — the size protocol returns the count</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. You add <code>__eq__</code> to a class. What breaks, and how do you fix it?</div>
+    <button class="opt">Nothing breaks; instances stay hashable and printable as before</button>
+    <button class="opt" data-correct="1">Instances become unhashable; restore it by defining __hash__</button>
+    <button class="opt">Printing breaks; restore the output by defining __repr__</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. Which single dunder is enough to make <code>sorted(vectors)</code> work?</div>
+    <button class="opt" data-correct="1">__lt__ — sorting compares pairs using the less-than method</button>
+    <button class="opt">__cmp__ — the three-way compare hook drives all sorting</button>
+    <button class="opt">__sort__ — the sort protocol orders the whole sequence</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary source to go deeper:</strong> Luciano Ramalho,
+  <em>Fluent Python</em> — the data-model chapter (“A Pythonic Object” /
+  “Object References, Mutability, and Recycling”) builds essentially this
+  <code>Vector</code> class dunder by dunder. Reference:
+  <a href="https://docs.python.org/3/reference/datamodel.html">the official Data
+  Model reference</a>, the canonical list of every special method.</p>
+
+  <div class="ask-teacher">💬 <strong>Stuck or curious?</strong> Ask me directly —
+  “when do I need <code>__hash__</code>?”, “what's the difference between
+  <code>__repr__</code> and <code>__str__</code>?”, “how does
+  <code>@total_ordering</code> know which methods to add?”. I'm your teacher for
+  this course, and the next lesson adapts to what you ask.</div>
+
+  <div class="lesson-nav">
+    <a href="0009-context-managers.html">← Prev: Context managers</a>
+    <a href="0011-decorators.html">Next: Decorators →</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — len(v) delegates to v.__len__(). The builtin is just syntax over the dunder protocol.",
+          no: "Not quite. There's no __size__ and len doesn't read a field — len(v) calls v.__len__()." },
+    q2: { ok: "Correct — defining __eq__ sets __hash__ to None. Add __hash__ (equal objects must hash equal) to stay hashable.",
+          no: "Defining __eq__ makes instances unhashable (no sets/dict keys). The fix is to define __hash__ as well." },
+    q3: { ok: "Correct — sorting only needs the less-than comparison, so __lt__ alone is enough.",
+          no: "Python 3 has no __cmp__ or __sort__. Sorting compares with <, which calls __lt__." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>

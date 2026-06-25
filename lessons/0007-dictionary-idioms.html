@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 07 — Dictionary idioms · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson seven: dictionary idioms.
+The dict is Python's workhorse, and a handful of small habits separate ported code from native code.
+The first habit is lookups with a fallback.
+In many languages you check whether a key exists, and only then index into the dictionary.
+In Python you reach for get instead: d dot get of key returns the value, or None when the key is missing.
+Pass a second argument to choose your own default, like d dot get of key comma zero.
+The next habit is grouping, and it has two idiomatic forms.
+The classic one is setdefault: d dot setdefault of key comma empty list, then append, all on one line.
+The cleaner one is a defaultdict from the collections module, which manufactures a missing value the moment you touch the key.
+When you only want to count things, reach for Counter, which is a dict subclass built exactly for tallying.
+Counter of a list gives you item-to-count pairs, and most common returns the top entries already sorted.
+When you iterate a dict, iterate items, so you get the key and the value together in one clean loop.
+To test membership, write key in d, not key in d dot keys, because the plain form is shorter and faster.
+A dict comprehension recaps lesson one: curly braces, key colon value, for each pair.
+That same shape lets you invert a dict in one line: value colon key, for key comma value in d dot items.
+Merging changed over the years, so know both forms.
+The double-star spread builds a new merged dict, and from Python three point nine the pipe operator does the same with less noise.
+Pipe equals merges in place, updating the dict on the left.
+One fact worth internalising: since Python three point seven, dicts preserve insertion order, so iteration is predictable.
+Two more tools for your pocket: pop with a default removes a key safely, and dict dot fromkeys builds a dict from a list of keys.
+Scroll down, take the quick checks, and replay the narration whenever you like.
+When something is unclear, ask me directly. I am your teacher for this course.
+</div>
+
+<main>
+  <div class="kicker">Lesson 07 · Idiomatic Python</div>
+  <h1>Dictionary idioms</h1>
+  <p class="lede">You already reach for a hash map without thinking. This lesson
+  swaps a few ported habits for the Python forms that read as native.</p>
+
+  <p>The dict is the most-used container in Python, so the difference between
+  clumsy and fluent dict code shows up on nearly every screen you write. The win
+  here is a small set of idioms you'll use daily.</p>
+
+  <h2>Lookups with a fallback: <code>.get()</code></h2>
+  <div class="contrast">
+    <div class="col other">
+      <h4>Most languages</h4>
+<pre><code><span class="c-com"># check, then index</span>
+<span class="c-kw">if</span> key <span class="c-kw">in</span> d:
+    val = d[key]
+<span class="c-kw">else</span>:
+    val = <span class="c-num">0</span></code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># one lookup, with a default</span>
+val = d.<span class="c-fn">get</span>(key, <span class="c-num">0</span>)</code></pre>
+    </div>
+  </div>
+  <p><code>d.get(key)</code> returns the value, or <code>None</code> when the key
+  is absent — no <code>KeyError</code>. Pass a second argument to choose the
+  default: <code>d.get(key, 0)</code>. Reach for <code>.get()</code> any time a
+  missing key is normal rather than exceptional.</p>
+
+  <h2>Grouping: <code>setdefault</code> and <code>defaultdict</code></h2>
+  <p>To bucket items by a key, the one-line classic is <code>setdefault</code>:
+  it inserts a fresh value the first time, then returns whatever is there.</p>
+<pre><code><span class="c-com"># group words by their first letter</span>
+groups = {}
+<span class="c-kw">for</span> w <span class="c-kw">in</span> words:
+    groups.<span class="c-fn">setdefault</span>(w[<span class="c-num">0</span>], []).<span class="c-fn">append</span>(w)</code></pre>
+  <p>The cleaner form is <code>collections.defaultdict</code>, which manufactures
+  the missing value automatically the moment you touch a new key:</p>
+<pre><code><span class="c-kw">from</span> collections <span class="c-kw">import</span> defaultdict
+
+groups = <span class="c-fn">defaultdict</span>(list)
+<span class="c-kw">for</span> w <span class="c-kw">in</span> words:
+    groups[w[<span class="c-num">0</span>]].<span class="c-fn">append</span>(w)</code></pre>
+  <div class="note"><strong>The mental shift:</strong> you pass <code>list</code>
+  (the function itself, not <code>list()</code>) as the <em>factory</em>.
+  <code>defaultdict</code> calls it to make a default whenever a key is first
+  accessed — so the <code>append</code> always has something to append to.</div>
+
+  <h2>Counting: <code>Counter</code></h2>
+  <p>When the value you want <em>is</em> a count, skip the manual bookkeeping and
+  use <code>collections.Counter</code>, a dict subclass built for tallying:</p>
+<pre><code><span class="c-kw">from</span> collections <span class="c-kw">import</span> Counter
+
+counts = <span class="c-fn">Counter</span>(words)        <span class="c-com"># {'the': 4, 'cat': 2, ...}</span>
+counts.<span class="c-fn">most_common</span>(<span class="c-num">3</span>)            <span class="c-com"># top 3 as (item, count) pairs</span>
+counts[<span class="c-str">"unseen"</span>]              <span class="c-com"># 0 — never a KeyError</span></code></pre>
+
+  <h2>Iterating and membership</h2>
+  <p>Iterate <code>.items()</code> to get key and value together, and test
+  membership against the dict directly — <code>key in d</code>, never
+  <code>key in d.keys()</code>:</p>
+<pre><code><span class="c-com"># key and value in one clean loop</span>
+<span class="c-kw">for</span> name, score <span class="c-kw">in</span> scores.<span class="c-fn">items</span>():
+    <span class="c-fn">print</span>(name, score)
+
+<span class="c-com"># membership: short and fast</span>
+<span class="c-kw">if</span> <span class="c-str">"alice"</span> <span class="c-kw">in</span> scores:
+    ...</code></pre>
+  <p class="muted">Iterating a dict directly (<code>for k in d</code>) already
+  yields keys, so <code>d.keys()</code> there is redundant. <code>key in d</code>
+  tests keys too — and is faster than scanning <code>d.keys()</code>.</p>
+
+  <h2>Dict comprehensions and inverting</h2>
+  <p>The comprehension shape from <a href="0001-comprehensions.html">lesson 01</a>
+  applies to dicts: curly braces, <code>key: value</code>, for each pair. That's
+  all you need to <strong>invert</strong> a dict in one line:</p>
+<pre><code><span class="c-com"># swap keys and values</span>
+inverse = {v: k <span class="c-kw">for</span> k, v <span class="c-kw">in</span> d.<span class="c-fn">items</span>()}</code></pre>
+  <p class="muted">Inverting assumes the values are unique and hashable; duplicate
+  values collapse, keeping the last one seen.</p>
+
+  <h2>Merging dicts</h2>
+  <p>To combine dicts, the spread form works everywhere; from Python 3.9 the
+  <code>|</code> operator does the same with less noise. On overlap, the
+  <em>right-hand</em> value wins:</p>
+<pre><code><span class="c-com"># build a new merged dict</span>
+merged = {**a, **b}          <span class="c-com"># all versions</span>
+merged = a | b               <span class="c-com"># 3.9+, same result</span>
+
+<span class="c-com"># merge in place — update `a`</span>
+a |= b                       <span class="c-com"># 3.9+</span></code></pre>
+
+  <div class="note"><strong>Order is guaranteed:</strong> since Python 3.7, dicts
+  <em>preserve insertion order</em>. Iteration, <code>.items()</code>, and merges
+  all follow the order keys were first added — so output is predictable, and
+  there's rarely a reason to reach for <code>OrderedDict</code> anymore.</div>
+
+  <h2>Two for your pocket</h2>
+<pre><code>val = d.<span class="c-fn">pop</span>(key, <span class="c-kw">None</span>)         <span class="c-com"># remove &amp; return, default if absent</span>
+seen = dict.<span class="c-fn">fromkeys</span>(items, <span class="c-num">0</span>)   <span class="c-com"># {item: 0, ...} from a sequence of keys</span></code></pre>
+  <p><code>d.pop(key, default)</code> removes a key without risking a
+  <code>KeyError</code>; <code>dict.fromkeys(keys)</code> builds a dict from a
+  sequence of keys (all sharing one default value).</p>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Quick checks</h2>
+  <p class="muted">Recall beats recognition — answer before you scroll. Immediate
+  feedback below each.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. Which returns <code>0</code> instead of raising when <code>key</code> is missing?</div>
+    <button class="opt" data-correct="1">val = scores.get(key, 0)</button>
+    <button class="opt">val = scores[key] or 0</button>
+    <button class="opt">val = scores.fetch(key, 0)</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. Which is the idiomatic way to group items into lists by a key?</div>
+    <button class="opt">groups = {}; groups[k] += [item]</button>
+    <button class="opt" data-correct="1">groups = defaultdict(list); groups[k].append(item)</button>
+    <button class="opt">groups = dict(list); groups[k].append(item)</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. What does <code>{v: k for k, v in d.items()}</code> build?</div>
+    <button class="opt" data-correct="1">a new dict with keys and values swapped</button>
+    <button class="opt">a set holding the values of the dict</button>
+    <button class="opt">a list of the dict's value-key pairs</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary source to go deeper:</strong> the official library reference
+  is the place to settle any dict question:
+  <a href="https://docs.python.org/3/library/stdtypes.html#dict">the
+  <code>dict</code> type in Built-in Types</a> (covers <code>get</code>,
+  <code>setdefault</code>, <code>pop</code>, <code>fromkeys</code>, and the
+  <code>|</code> operators), and
+  <a href="https://docs.python.org/3/library/collections.html">the
+  <code>collections</code> module</a> for <code>defaultdict</code> and
+  <code>Counter</code>.</p>
+
+  <div class="ask-teacher">💬 <strong>Stuck or curious?</strong> Ask me directly —
+  “when should I prefer <code>setdefault</code> over <code>defaultdict</code>?”,
+  “what happens to duplicate values when I invert a dict?”, “how is <code>a | b</code>
+  different from <code>a.update(b)</code>?”. I'm your teacher for this course, and
+  the next lesson adapts to what you ask.</div>
+
+  <div class="lesson-nav">
+    <a href="0006-strings-and-fstrings.html">← Prev: Strings &amp; f-strings</a>
+    <a href="0008-function-arguments.html">Next: Function arguments →</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — `.get(key, 0)` returns the default for a missing key, no KeyError.",
+          no: "Not quite. Indexing raises KeyError, and there's no `.fetch`. Use `.get(key, 0)`." },
+    q2: { ok: "Correct — `defaultdict(list)` auto-creates an empty list, so `.append` always works.",
+          no: "Those raise or pass a value where a factory belongs. `defaultdict(list)` is the idiom." },
+    q3: { ok: "Correct — `{v: k for k, v in d.items()}` swaps each key and value into a new dict.",
+          no: "Curly braces with `v: k` build a dict, not a set or list — it inverts the mapping." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 03 — Truthiness &amp; boolean idioms · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson three: truthiness and boolean idioms.
+This is the lesson that makes your conditionals stop looking ported and start looking native.
+In Python, every object already knows whether it is truthy or falsy, so you rarely have to ask explicitly.
+Empty containers, the number zero, an empty string, and None are all falsy; anything non-empty is truthy.
+That means you write if items, not if len of items is greater than zero.
+And you write if not items to ask whether a list is empty, never items equals empty brackets.
+The conditional reads like plain English, and that is the whole point.
+Now the most important rule about None: always compare it with is and is not, never with double equals.
+None is a singleton, so is checks identity, which is exact, fast, and what PEP 8 asks for.
+Next, the or operator is the classic way to supply a default: name equals name or anon.
+But watch the trap: if zero or an empty string is a valid value, or will wrongly replace it, because those are falsy.
+When zero and empty string are legitimate, reach for x if x is not None else default instead.
+Here is the part that surprises people from other languages: and and or do not return booleans.
+They short-circuit and return one of the actual operands, so a or b can hand you a or it can hand you b.
+For aggregate questions, any and all read beautifully with a generator expression flowing through them.
+any of this for that gives you True the moment one item qualifies, and all the moment one fails.
+Python also lets you chain comparisons, so zero is less than or equal to x less than ten is one clean expression.
+And membership tests read like a sentence: if x in collection, or if key in dict.
+One last thing: never write equals True or equals False; the value is already a boolean, so just use it.
+And a small curiosity for later: bool is a subclass of int, so True really does behave like one.
+Scroll down, take the quick checks, and replay this narration whenever you like.
+When something is unclear, ask me directly. I am your teacher for this course.
+</div>
+
+<main>
+  <div class="kicker">Lesson 03 · Idiomatic Python</div>
+  <h1>Truthiness &amp; boolean idioms</h1>
+  <p class="lede">Python objects already know if they're "empty" — lean on that and
+  your conditionals read like English instead of like a port from another language.</p>
+
+  <p>You know how to write an <code>if</code>. The win here is smaller and sharper:
+  the handful of boolean idioms that idiomatic Python leans on everywhere, so you
+  read and write them without a second thought.</p>
+
+  <h2>Truthiness: let the object answer</h2>
+  <div class="contrast">
+    <div class="col other">
+      <h4>Most languages</h4>
+<pre><code><span class="c-com"># ask explicitly</span>
+<span class="c-kw">if</span> <span class="c-fn">len</span>(items) &gt; <span class="c-num">0</span>:
+    ...
+<span class="c-kw">if</span> items == []:
+    ...</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># the object is already truthy/falsy</span>
+<span class="c-kw">if</span> items:
+    ...
+<span class="c-kw">if</span> <span class="c-kw">not</span> items:
+    ...</code></pre>
+    </div>
+  </div>
+
+  <p>Empty containers, <code>0</code>, <code>""</code>, and <code>None</code> are
+  all <strong>falsy</strong>; anything non-empty is <strong>truthy</strong>. So
+  <code>if items:</code> means "if there's anything in <code>items</code>," and
+  <code>if not items:</code> means "if it's empty." No <code>len</code>, no
+  comparison to a literal.</p>
+
+  <h2><code>is None</code>, never <code>== None</code></h2>
+<pre><code><span class="c-com"># identity check — what PEP 8 asks for</span>
+<span class="c-kw">if</span> value <span class="c-kw">is</span> <span class="c-kw">None</span>:
+    ...
+<span class="c-kw">if</span> value <span class="c-kw">is</span> <span class="c-kw">not</span> <span class="c-kw">None</span>:
+    ...</code></pre>
+  <p><code>None</code> is a singleton — there is exactly one of it — so you compare
+  with <code>is</code>/<code>is not</code>, which tests <em>identity</em>. It's
+  exact, fast, and can't be fooled by an object that overrides <code>==</code>.</p>
+
+  <div class="note"><strong>The mental shift:</strong> "is it empty?" and "is it
+  <code>None</code>?" are <em>different questions</em>. <code>if not value:</code>
+  is true for <code>None</code>, <code>0</code>, <code>""</code>, and <code>[]</code>
+  alike. When you specifically mean "was nothing passed?", say <code>is None</code>.</div>
+
+  <h2><code>or</code> for defaults — and its trap</h2>
+<pre><code><span class="c-com"># common, concise default</span>
+name = name <span class="c-kw">or</span> <span class="c-str">"anon"</span>
+
+<span class="c-com"># trap: 0 and "" are valid but falsy, so `or` replaces them</span>
+count = count <span class="c-kw">or</span> <span class="c-num">10</span>      <span class="c-com"># count == 0 becomes 10 — bug!</span>
+
+<span class="c-com"># safe when 0 / "" are legitimate values</span>
+count = count <span class="c-kw">if</span> count <span class="c-kw">is</span> <span class="c-kw">not</span> <span class="c-kw">None</span> <span class="c-kw">else</span> <span class="c-num">10</span></code></pre>
+  <p><code>name or "anon"</code> is great when any falsy input should fall back. But
+  if <code>0</code> or <code>""</code> are <em>real</em> values you must keep, use
+  the explicit <code>x if x is not None else default</code> form instead.</p>
+
+  <h2><code>and</code>/<code>or</code> return operands, not booleans</h2>
+<pre><code><span class="c-com"># short-circuit: the result is one of the actual operands</span>
+<span class="c-str">"hi"</span> <span class="c-kw">or</span> <span class="c-str">"bye"</span>     <span class="c-com"># =&gt; "hi"   (first truthy)</span>
+<span class="c-str">""</span> <span class="c-kw">or</span> <span class="c-str">"bye"</span>       <span class="c-com"># =&gt; "bye"  (first was falsy)</span>
+<span class="c-str">"hi"</span> <span class="c-kw">and</span> <span class="c-str">"bye"</span>    <span class="c-com"># =&gt; "bye"  (both truthy, returns last)</span>
+<span class="c-num">0</span> <span class="c-kw">and</span> <span class="c-str">"bye"</span>       <span class="c-com"># =&gt; 0     (stops at first falsy)</span></code></pre>
+  <p>This is exactly <em>why</em> <code>name or "anon"</code> works: <code>or</code>
+  returns the first truthy operand, or the last one if none qualify. The value you
+  get back is the operand itself, not a coerced <code>True</code>/<code>False</code>.</p>
+
+  <h2><code>any</code> / <code>all</code> with a generator</h2>
+<pre><code><span class="c-com"># True as soon as one item qualifies — stops early</span>
+<span class="c-kw">if</span> <span class="c-fn">any</span>(n &lt; <span class="c-num">0</span> <span class="c-kw">for</span> n <span class="c-kw">in</span> numbers):
+    ...
+
+<span class="c-com"># True only if every item qualifies</span>
+<span class="c-kw">if</span> <span class="c-fn">all</span>(<span class="c-fn">isinstance</span>(x, <span class="c-fn">str</span>) <span class="c-kw">for</span> x <span class="c-kw">in</span> values):
+    ...</code></pre>
+  <p>Feed <code>any</code> and <code>all</code> a generator expression and you get a
+  readable, short-circuiting aggregate: <code>any</code> stops at the first match,
+  <code>all</code> stops at the first failure. No accumulator flag required.</p>
+
+  <h2>Chained comparisons &amp; membership</h2>
+<pre><code><span class="c-com"># chain comparisons like math — x is evaluated once</span>
+<span class="c-kw">if</span> <span class="c-num">0</span> &lt;= x &lt; <span class="c-num">10</span>:
+    ...
+
+<span class="c-com"># membership reads like a sentence</span>
+<span class="c-kw">if</span> x <span class="c-kw">in</span> collection:
+    ...
+<span class="c-kw">if</span> key <span class="c-kw">in</span> some_dict:      <span class="c-com"># tests keys, not values</span>
+    ...</code></pre>
+  <p><code>0 &lt;= x &lt; 10</code> means exactly what it says and is the same as
+  <code>0 &lt;= x and x &lt; 10</code> — but <code>x</code> is evaluated only once.
+  And <code>in</code> is the idiomatic membership test; on a <code>dict</code> it
+  checks the <em>keys</em>.</p>
+
+  <div class="note"><strong>Don't write <code>== True</code>.</strong> If
+  <code>flag</code> is already a boolean, <code>if flag:</code> says it best;
+  <code>if flag == True:</code> is noise. (Aside: <code>bool</code> is a subclass
+  of <code>int</code>, so <code>True == 1</code> — another reason to compare by
+  truthiness, not by equality.)</div>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Three quick checks</h2>
+  <p class="muted">Recall beats recognition — answer before you scroll. Immediate
+  feedback below each.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. Which line idiomatically checks that the list <code>items</code> is <strong>not</strong> empty?</div>
+    <button class="opt" data-correct="1">if items:</button>
+    <button class="opt">if len(items) &gt; 0:</button>
+    <button class="opt">if items != []:</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. <code>count</code> may legitimately be <code>0</code>. Which default keeps a real <code>0</code>?</div>
+    <button class="opt">count = count or 10</button>
+    <button class="opt" data-correct="1">count = count if count is not None else 10</button>
+    <button class="opt">count = count if count else 10</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. What does the expression <code>"" or "bye"</code> evaluate to?</div>
+    <button class="opt" data-correct="1">the string "bye"</button>
+    <button class="opt">the boolean True</button>
+    <button class="opt">the empty string ""</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary source to go deeper:</strong> the official reference on
+  <a href="https://docs.python.org/3/library/stdtypes.html#truth-value-testing">truth
+  value testing</a> spells out exactly which objects are falsy. For the
+  <code>is None</code> and comparison advice, see the Programming Recommendations in
+  <a href="https://peps.python.org/pep-0008/">PEP 8</a> — Python's style guide,
+  written by the people who shaped the language.</p>
+
+  <div class="ask-teacher">💬 <strong>Stuck or curious?</strong> Ask me directly —
+  “why is <code>is None</code> better than <code>== None</code>?”, “show me where
+  <code>x or default</code> bites me”, “when does <code>all</code> short-circuit?”.
+  I'm your teacher for this course, and the next lesson adapts to what you ask.</div>
+
+  <div class="lesson-nav">
+    <a href="0002-unpacking-and-assignment.html">← Prev: Unpacking &amp; multiple assignment</a>
+    <a href="0004-slicing.html">Next: Slicing →</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — an empty list is falsy, so `if items:` is true exactly when it has contents. No `len`, no literal comparison.",
+          no: "Those work, but aren't idiomatic. Lean on truthiness: `if items:` is true precisely when the list is non-empty." },
+    q2: { ok: "Correct — `is not None` keeps a real 0; only an actual None falls back to 10.",
+          no: "Trap: `or` and `if count` are both falsy-based, so a real 0 gets replaced by 10. Use `is not None`." },
+    q3: { ok: "Correct — `or` returns the first truthy operand; \"\" is falsy, so you get \"bye\" itself, not a boolean.",
+          no: "`or` returns an operand, not a bool. The empty string is falsy, so it skips to \"bye\"." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>

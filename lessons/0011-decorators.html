@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 11 — Decorators · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson eleven: decorators.
+The single win here is reading and writing the at-sign decorator syntax without it feeling like magic.
+The whole idea rests on one fact: in Python, functions are first-class objects.
+You can assign a function to a variable, pass it into another function, store it in a list, and return it from a function, just like any other value.
+Once you accept that, a decorator is almost boring: it is just a function that takes a function and returns another function.
+The at-sign line is pure sugar.
+Writing at-timer above a function definition is exactly the same as writing func equals timer of func right after it.
+Nothing more is happening; the name is rebound to whatever the decorator returns.
+Let us build one from scratch so it stops being mysterious.
+Inside the decorator we define a small wrapper function that accepts star-args and star-star-kwargs, calls the original, and adds behaviour around it.
+We use star-args and star-star-kwargs so the wrapper works for any function signature, no matter how many arguments it takes.
+There is one tax to pay: the wrapper replaces the original, so the wrapped function reports the wrapper's name and docstring instead of its own.
+The fix is to decorate your wrapper with functools dot wraps, passing the original function, which copies the name, docstring, and other metadata across.
+Always reach for functools dot wraps; without it, debuggers, help, and documentation tools see the wrong thing.
+You will rarely write decorators day to day, but you will read them constantly.
+The standard library ships the ones you will meet most: functools dot cache and lru-cache to memoise expensive calls.
+Property to expose a method as an attribute, and staticmethod and classmethod to control how a method receives its first argument.
+And dataclass, which we will meet properly in a later lesson, generates init and repr for you.
+One last layer: a decorator that takes arguments is really a decorator factory, an outer function that returns the actual decorator.
+That is just one more nesting level, so do not panic when you see at-something with parentheses and arguments.
+Scroll down, take the quick checks, and replay the narration whenever you like.
+When something is unclear, ask me directly. I am your teacher for this course.
+</div>
+
+<main>
+  <div class="kicker">Lesson 11 · Idiomatic Python</div>
+  <h1>Decorators</h1>
+  <p class="lede">The <code>@</code> line that sits above so many Python functions
+  isn't magic — it's one tiny rule applied consistently. Learn the rule and you
+  read and write decorators with confidence.</p>
+
+  <p>You'll write your own decorators only occasionally, but you'll <em>read</em>
+  them constantly — in web frameworks, in test suites, in the standard library.
+  The win for this lesson is decoding any <code>@something</code> on sight.</p>
+
+  <h2>The foundation: functions are first-class</h2>
+  <p>Before decorators make sense, one fact has to be automatic: a function in
+  Python is just an object. You can assign it, pass it, return it, and store it —
+  no calling parentheses required.</p>
+<pre><code><span class="c-kw">def</span> <span class="c-fn">shout</span>(text):
+    <span class="c-kw">return</span> text.upper()
+
+greet = shout              <span class="c-com"># assign the function itself (no parens)</span>
+greet(<span class="c-str">"hi"</span>)               <span class="c-com"># -&gt; "HI"</span>
+
+funcs = [shout, <span class="c-fn">str</span>.strip]  <span class="c-com"># store functions in a list</span>
+<span class="c-kw">for</span> f <span class="c-kw">in</span> funcs:
+    f(<span class="c-str">"  hi  "</span>)            <span class="c-com"># call each one</span></code></pre>
+  <div class="note"><strong>The mental shift:</strong> <code>shout</code> is a
+  value; <code>shout()</code> is the act of <em>calling</em> it. A decorator is
+  built entirely on passing the value around <em>before</em> anyone calls it.</div>
+
+  <h2>What a decorator actually is</h2>
+  <p>A decorator is a function that <strong>takes a function and returns a
+  function</strong> — usually a new one that wraps the original with extra
+  behaviour. The <code>@</code> syntax is pure sugar for a reassignment:</p>
+  <div class="contrast">
+    <div class="col other">
+      <h4>The desugared form</h4>
+<pre><code><span class="c-kw">def</span> <span class="c-fn">greet</span>():
+    <span class="c-kw">return</span> <span class="c-str">"hi"</span>
+
+greet = timer(greet)</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code>@<span class="c-fn">timer</span>
+<span class="c-kw">def</span> <span class="c-fn">greet</span>():
+    <span class="c-kw">return</span> <span class="c-str">"hi"</span></code></pre>
+    </div>
+  </div>
+  <p>Both lines mean the identical thing: <em>“call <code>timer</code> with
+  <code>greet</code>, and rebind the name <code>greet</code> to whatever comes
+  back.”</em> Read every <code>@decorator</code> as <code>name = decorator(name)</code>
+  and the mystery is gone.</p>
+
+  <h2>Build one from scratch</h2>
+  <p>Here is a complete, idiomatic timer. The pattern is always the same: define a
+  <code>wrapper</code> inside, do something before and after, and return the
+  wrapper.</p>
+<pre><code><span class="c-kw">import</span> functools, time
+
+<span class="c-kw">def</span> <span class="c-fn">timer</span>(func):
+    @<span class="c-fn">functools.wraps</span>(func)
+    <span class="c-kw">def</span> <span class="c-fn">wrapper</span>(*args, **kwargs):
+        start = time.perf_counter()
+        result = func(*args, **kwargs)     <span class="c-com"># call the real function</span>
+        elapsed = time.perf_counter() - start
+        <span class="c-fn">print</span>(f<span class="c-str">"{func.__name__} took {elapsed:.4f}s"</span>)
+        <span class="c-kw">return</span> result                      <span class="c-com"># pass its result back through</span>
+    <span class="c-kw">return</span> wrapper                         <span class="c-com"># return the replacement</span>
+
+@<span class="c-fn">timer</span>
+<span class="c-kw">def</span> <span class="c-fn">slow_add</span>(a, b):
+    time.sleep(<span class="c-num">0.1</span>)
+    <span class="c-kw">return</span> a + b</code></pre>
+  <div class="note"><strong>Why <code>*args, **kwargs</code>?</strong> The wrapper
+  stands in for <em>any</em> function, so it must accept any arguments and forward
+  them unchanged. Capturing with <code>*args, **kwargs</code> and re-passing them
+  to <code>func</code> makes one decorator work on every signature.</div>
+
+  <h2>The tax: <code>functools.wraps</code></h2>
+  <p>Because the wrapper <em>replaces</em> the original, the decorated function
+  starts reporting the wrapper's identity — its <code>__name__</code> becomes
+  <code>"wrapper"</code> and its <code>__doc__</code> is lost. That breaks
+  <code>help()</code>, debuggers, and doc tools.</p>
+  <div class="contrast">
+    <div class="col other">
+      <h4>Without <code>@functools.wraps</code></h4>
+<pre><code>slow_add.__name__
+<span class="c-com"># -&gt; 'wrapper'  (wrong!)</span></code></pre>
+    </div>
+    <div class="col py">
+      <h4>With <code>@functools.wraps(func)</code></h4>
+<pre><code>slow_add.__name__
+<span class="c-com"># -&gt; 'slow_add'  (preserved)</span></code></pre>
+    </div>
+  </div>
+  <p><code>functools.wraps(func)</code> copies <code>__name__</code>,
+  <code>__doc__</code>, and friends from the original onto your wrapper. It costs
+  one line — <strong>always include it</strong>.</p>
+
+  <h2>The ones you'll meet in the wild</h2>
+  <p>You rarely hand-write decorators, but the standard library hands you several
+  you'll use constantly:</p>
+<pre><code>@<span class="c-fn">functools.cache</span>             <span class="c-com"># memoise: cache results by arguments (3.9+)</span>
+<span class="c-kw">def</span> <span class="c-fn">fib</span>(n):
+    <span class="c-kw">return</span> n <span class="c-kw">if</span> n &lt; <span class="c-num">2</span> <span class="c-kw">else</span> fib(n - <span class="c-num">1</span>) + fib(n - <span class="c-num">2</span>)
+
+<span class="c-kw">class</span> <span class="c-fn">Circle</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(self, r):
+        self.r = r
+
+    @<span class="c-fn">property</span>                  <span class="c-com"># call-free attribute access: c.area</span>
+    <span class="c-kw">def</span> <span class="c-fn">area</span>(self):
+        <span class="c-kw">return</span> <span class="c-num">3.14159</span> * self.r ** <span class="c-num">2</span>
+
+    @<span class="c-fn">staticmethod</span>              <span class="c-com"># no self / no cls</span>
+    <span class="c-kw">def</span> <span class="c-fn">describe</span>():
+        <span class="c-kw">return</span> <span class="c-str">"a round shape"</span>
+
+    @<span class="c-fn">classmethod</span>               <span class="c-com"># receives the class as cls</span>
+    <span class="c-kw">def</span> <span class="c-fn">unit</span>(cls):
+        <span class="c-kw">return</span> cls(<span class="c-num">1</span>)</code></pre>
+  <p>You'll also meet <code>@functools.lru_cache(maxsize=...)</code> (the
+  bounded-size sibling of <code>@cache</code>) and <code>@dataclass</code>, which
+  generates <code>__init__</code> and <code>__repr__</code> for a class — we give
+  it its own lesson later.</p>
+
+  <h2>Decorators that take arguments</h2>
+  <p>When you see <code>@retry(times=3)</code>, that <code>()</code> means an extra
+  layer. A parameterised decorator is a <strong>decorator factory</strong>: an
+  outer function that takes the arguments and <em>returns</em> the real decorator.</p>
+<pre><code><span class="c-kw">def</span> <span class="c-fn">repeat</span>(times):              <span class="c-com"># factory: takes the config...</span>
+    <span class="c-kw">def</span> <span class="c-fn">decorator</span>(func):         <span class="c-com"># ...returns a real decorator...</span>
+        @<span class="c-fn">functools.wraps</span>(func)
+        <span class="c-kw">def</span> <span class="c-fn">wrapper</span>(*args, **kwargs):
+            <span class="c-kw">for</span> _ <span class="c-kw">in</span> <span class="c-fn">range</span>(times):
+                result = func(*args, **kwargs)
+            <span class="c-kw">return</span> result
+        <span class="c-kw">return</span> wrapper
+    <span class="c-kw">return</span> decorator
+
+@<span class="c-fn">repeat</span>(times=<span class="c-num">3</span>)               <span class="c-com"># repeat(3) returns the decorator</span>
+<span class="c-kw">def</span> <span class="c-fn">ping</span>():
+    <span class="c-fn">print</span>(<span class="c-str">"ping"</span>)</code></pre>
+  <p><code>@repeat(times=3)</code> first <em>calls</em> <code>repeat(times=3)</code>,
+  which returns <code>decorator</code>; that decorator is then applied to
+  <code>ping</code>. Three nestings instead of two — same rule each time. Keep this
+  in your back pocket; don't reach for it unless you genuinely need the argument.</p>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Three quick checks</h2>
+  <p class="muted">Recall beats recognition — answer before you scroll. Immediate
+  feedback below each.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. The line <code>@timer</code> above <code>def greet(): ...</code> is exactly equivalent to which statement?</div>
+    <button class="opt" data-correct="1">greet = timer(greet)</button>
+    <button class="opt">timer = greet(timer)</button>
+    <button class="opt">greet = timer.greet()</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. Why does the inner <code>wrapper</code> use <code>*args, **kwargs</code>?</div>
+    <button class="opt" data-correct="1">to accept and forward any arguments for any function signature</button>
+    <button class="opt">to make the wrapped function run faster than the original call</button>
+    <button class="opt">to force the decorated function to take only keyword arguments</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. What does <code>functools.wraps(func)</code> on the wrapper fix?</div>
+    <button class="opt" data-correct="1">it copies the original's __name__ and __doc__ onto the wrapper</button>
+    <button class="opt">it caches the original's return values keyed by the arguments</button>
+    <button class="opt">it lets the decorator accept configuration arguments cleanly</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary source to go deeper:</strong> the official Python glossary
+  entry for <a href="https://docs.python.org/3/glossary.html#term-decorator">“decorator”</a>
+  is the canonical one-line definition. For a thorough, example-driven walkthrough,
+  Real Python's <a href="https://realpython.com/primer-on-python-decorators/">“Primer
+  on Python Decorators”</a> covers everything in this lesson and then some.</p>
+
+  <div class="ask-teacher">💬 <strong>Stuck or curious?</strong> Ask me directly —
+  “show me a decorator that registers handlers”, “what exactly does
+  <code>functools.wraps</code> copy?”, “when should I use <code>@lru_cache</code>
+  over <code>@cache</code>?”. I'm your teacher for this course, and the next
+  lesson adapts to what you ask.</div>
+
+  <div class="lesson-nav">
+    <a href="0010-data-model-dunders.html">← Prev: The data model &amp; dunder methods</a>
+    <a href="0012-generators-and-yield.html">Next: Generators &amp; yield →</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — `@timer` simply rebinds the name to `timer(greet)`. That's the whole rule.",
+          no: "Read it as `name = decorator(name)`: `@timer` over `greet` means `greet = timer(greet)`." },
+    q2: { ok: "Correct — `*args, **kwargs` captures any arguments and forwards them, so one wrapper fits every signature.",
+          no: "It's about generality, not speed or keyword-only calls: it forwards any arguments to the real function." },
+    q3: { ok: "Correct — `wraps` copies `__name__`, `__doc__` and other metadata so the wrapper reports the original's identity.",
+          no: "Caching is `@cache`; arguments are a factory. `wraps` restores the original's `__name__` and `__doc__`." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>

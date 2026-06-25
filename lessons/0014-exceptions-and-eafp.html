@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 14 — Exceptions &amp; EAFP · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson fourteen: exceptions and EAFP.
+If you came from a language where exceptions are reserved for rare, catastrophic failures, this lesson rewires that instinct.
+Python has its own acronym for the mindset: EAFP, easier to ask forgiveness than permission.
+The opposite style is LBYL, look before you leap, where you check every precondition before acting.
+In Python, you usually just try the operation and catch the failure if it comes.
+So instead of checking whether a key is in a dictionary and then indexing it, you simply index it inside a try block and catch KeyError.
+The win is that you do the lookup once, not twice, and you avoid a race where the key disappears between the check and the use.
+When you only want a fallback value, the dictionary's get method is even cleaner than either approach.
+The full statement has four clauses: try, except, else, and finally.
+The try block holds the risky code, and each except clause handles a specific kind of failure.
+The else clause runs only when the try block raised nothing, so it is the place for code that depends on success.
+The finally clause always runs, exception or not, which makes it perfect for cleanup.
+Always catch specific exceptions, never a bare except, because a bare except will swallow things like KeyboardInterrupt and hide real bugs.
+You can catch several related types at once by writing them as a tuple after except.
+To signal an error yourself, you raise an exception, like raise ValueError with a message.
+Inside an except block, a bare raise re-raises the current exception untouched, preserving its original traceback.
+When you want to wrap a low-level error in a more meaningful one, raise your exception from the original to keep the chain.
+Your own exception types are just classes that subclass Exception, often with nothing more than a name.
+And here is the cultural shift: Python uses exceptions for ordinary control flow far more than most languages, for instance StopIteration is how every for loop knows when an iterator is done.
+When you simply want to ignore a specific error, contextlib.suppress reads better than an empty except block.
+Take the three quick checks below, and ask me anything that is still fuzzy.
+</div>
+
+<main>
+  <div class="kicker">Lesson 14 · Idiomatic Python</div>
+  <h1>Exceptions &amp; EAFP</h1>
+  <p class="lede">Most languages treat exceptions as a fire alarm. Python treats
+  them as a normal way to ask "did that work?" — and embracing that makes your
+  code shorter, faster, and more correct.</p>
+
+  <p>You already know how to throw and catch. The delta here is <em>attitude</em>:
+  in Python you reach for exceptions early and often, you let the failure tell you
+  what went wrong, and you stop pre-checking conditions the language will check
+  for you anyway.</p>
+
+  <h2>EAFP vs LBYL</h2>
+  <p>Python has a name for its preferred style: <strong>EAFP</strong> — "easier to
+  ask forgiveness than permission." The alternative, common elsewhere, is
+  <strong>LBYL</strong> — "look before you leap," guarding every operation with a
+  precondition check.</p>
+  <div class="contrast">
+    <div class="col other">
+      <h4>LBYL — look before you leap</h4>
+<pre><code><span class="c-com"># check, then use</span>
+<span class="c-kw">if</span> key <span class="c-kw">in</span> d:
+    value = d[key]
+<span class="c-kw">else</span>:
+    value = default</code></pre>
+    </div>
+    <div class="col py">
+      <h4>EAFP — ask forgiveness</h4>
+<pre><code><span class="c-com"># just try it</span>
+<span class="c-kw">try</span>:
+    value = d[key]
+<span class="c-kw">except</span> KeyError:
+    value = default</code></pre>
+    </div>
+  </div>
+  <p>The EAFP version does the lookup <em>once</em> instead of twice, and it has no
+  gap where the key could vanish between the <code>in</code> check and the index
+  (a real concern with shared or concurrent state). For this exact case, the
+  truly idiomatic answer is even shorter:</p>
+<pre><code>value = d.get(key, default)</code></pre>
+
+  <div class="note"><strong>The mental shift:</strong> EAFP is not "skip error
+  handling." It's "let the operation itself be the test." You don't ask whether a
+  file exists and then open it — you open it and catch <code>FileNotFoundError</code>,
+  because the answer to "can I open it?" <em>is</em> the open.</div>
+
+  <h2>The full statement: <code>try</code> / <code>except</code> / <code>else</code> / <code>finally</code></h2>
+<pre><code><span class="c-kw">try</span>:
+    f = <span class="c-fn">open</span>(path)             <span class="c-com"># risky work</span>
+<span class="c-kw">except</span> FileNotFoundError:
+    log(<span class="c-str">"missing"</span>)          <span class="c-com"># handle a specific failure</span>
+<span class="c-kw">else</span>:
+    data = f.read()           <span class="c-com"># runs ONLY if try raised nothing</span>
+<span class="c-kw">finally</span>:
+    cleanup()                 <span class="c-com"># always runs, success or not</span></code></pre>
+  <p>Each clause has one job. <code>except</code> handles a failure;
+  <code>else</code> holds the success-only code you want to keep <em>out</em> of the
+  <code>try</code> (so it can't accidentally catch a second, unrelated error);
+  <code>finally</code> runs no matter what — return, raise, or fall through — which
+  makes it the home for cleanup.</p>
+
+  <h2>Catch specific exceptions — never bare <code>except</code></h2>
+  <div class="contrast">
+    <div class="col other">
+      <h4>Hides bugs</h4>
+<pre><code><span class="c-kw">try</span>:
+    risky()
+<span class="c-kw">except</span>:            <span class="c-com"># catches EVERYTHING</span>
+    <span class="c-kw">pass</span></code></pre>
+    </div>
+    <div class="col py">
+      <h4>Says what you mean</h4>
+<pre><code><span class="c-kw">try</span>:
+    risky()
+<span class="c-kw">except</span> (KeyError, IndexError) <span class="c-kw">as</span> e:
+    log(e)</code></pre>
+    </div>
+  </div>
+  <p>A bare <code>except:</code> also swallows <code>KeyboardInterrupt</code> and
+  <code>SystemExit</code>, so Ctrl-C stops working and genuine bugs disappear
+  silently. Name the exceptions you actually expect; group related ones in a
+  <strong>tuple</strong>, and bind the instance with <code>as e</code> when you
+  need its details.</p>
+
+  <h2>Raising, re-raising, and chaining</h2>
+<pre><code><span class="c-com"># signal an error yourself</span>
+<span class="c-kw">raise</span> <span class="c-fn">ValueError</span>(<span class="c-str">"age must be non-negative"</span>)
+
+<span class="c-com"># re-raise the current exception unchanged (keeps its traceback)</span>
+<span class="c-kw">try</span>:
+    parse(raw)
+<span class="c-kw">except</span> ValueError:
+    log(<span class="c-str">"bad input"</span>)
+    <span class="c-kw">raise</span>
+
+<span class="c-com"># wrap a low-level error in a domain one, preserving the cause</span>
+<span class="c-kw">try</span>:
+    cfg = json.loads(text)
+<span class="c-kw">except</span> json.JSONDecodeError <span class="c-kw">as</span> err:
+    <span class="c-kw">raise</span> <span class="c-fn">ConfigError</span>(<span class="c-str">"could not load config"</span>) <span class="c-kw">from</span> err</code></pre>
+  <p>A bare <code>raise</code> inside an <code>except</code> re-throws the exact
+  exception being handled, traceback intact — better than
+  <code>raise e</code>. The <code>raise X from err</code> form sets the
+  <em>cause</em>, so the traceback shows both your error and the one underneath it
+  ("The above exception was the direct cause...").</p>
+
+  <h2>Your own exception types</h2>
+  <p>A custom exception is just a class that subclasses <code>Exception</code> —
+  usually the whole body is <code>pass</code>. The <em>name</em> is the value:</p>
+<pre><code><span class="c-kw">class</span> <span class="c-fn">ConfigError</span>(Exception):
+    <span class="c-str">"""Raised when configuration cannot be loaded."""</span></code></pre>
+  <p>Callers can then write <code>except ConfigError</code> to catch your errors
+  specifically, without accidentally grabbing unrelated <code>ValueError</code>s.
+  Subclass a more specific built-in (like <code>ValueError</code>) only when your
+  error genuinely <em>is</em> that kind of error.</p>
+
+  <h2>Exceptions as control flow</h2>
+  <p>Here's the cultural difference. In many languages exceptions are "exceptional"
+  — reserved for failures. Python uses them for <strong>ordinary control flow</strong>
+  too. The clearest example: every <code>for</code> loop is built on an exception.
+  When an iterator is exhausted, it raises <code>StopIteration</code>, and the loop
+  catches it to know when to stop.</p>
+  <div class="note"><strong>So don't flinch</strong> at a <code>try</code> on a hot
+  path the way you might elsewhere. When the success case dominates, EAFP is often
+  <em>faster</em> than LBYL, because the happy path pays no checking cost at all.</div>
+
+  <h2>Ignoring an error on purpose: <code>contextlib.suppress</code></h2>
+<pre><code><span class="c-kw">from</span> contextlib <span class="c-kw">import</span> suppress
+
+<span class="c-kw">with</span> <span class="c-fn">suppress</span>(FileNotFoundError):
+    os.remove(path)        <span class="c-com"># gone already? fine.</span></code></pre>
+  <p>When you genuinely want to do nothing on a specific error, this reads better
+  than a <code>try</code>/<code>except .../pass</code> — it names the intent and
+  the suppressed type on one line. (It ties back to the context-manager lesson:
+  <code>suppress</code> is just a context manager.)</p>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Three quick checks</h2>
+  <p class="muted">Recall beats recognition — answer before you scroll. Immediate
+  feedback below each.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. Which best captures the EAFP style for a dictionary lookup with a fallback?</div>
+    <button class="opt" data-correct="1">value = d.get(key, default)</button>
+    <button class="opt">value = d[key] if key in d else None</button>
+    <button class="opt">value = check(key) and d[key]</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. In <code>try/except/else/finally</code>, when does the <code>else</code> block run?</div>
+    <button class="opt">whenever the except clause has finished running</button>
+    <button class="opt" data-correct="1">only when the try block raised no exception</button>
+    <button class="opt">always, just before the finally block runs</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. Why prefer <code>except ValueError:</code> over a bare <code>except:</code>?</div>
+    <button class="opt" data-correct="1">a bare except also swallows Ctrl-C and hides real bugs</button>
+    <button class="opt">a bare except is slower because it builds a tuple</button>
+    <button class="opt">a bare except cannot bind the error with an as clause</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary source to go deeper:</strong> the official Python tutorial,
+  <a href="https://docs.python.org/3/tutorial/errors.html">"Errors and Exceptions"</a>
+  — the canonical walkthrough of <code>try</code>/<code>except</code>/<code>else</code>/<code>finally</code>,
+  raising, and chaining. For the term itself, see the
+  <a href="https://docs.python.org/3/glossary.html#term-EAFP">glossary entry for
+  EAFP</a>, which contrasts it directly with LBYL.</p>
+
+  <div class="ask-teacher">💬 <strong>Stuck or curious?</strong> Ask me directly —
+  “when is LBYL actually the better choice?”, “show me when to use <code>raise from</code>
+  versus a bare <code>raise</code>”, “how does <code>StopIteration</code> power a
+  <code>for</code> loop?”. I'm your teacher for this course, and the next lesson
+  adapts to what you ask.</div>
+
+  <div class="lesson-nav">
+    <a href="0013-dataclasses-namedtuples.html">← Prev: Dataclasses &amp; named tuples</a>
+    <a href="0015-type-hints.html">Next: Type hints →</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — `.get(key, default)` is the one-call EAFP form: it does the lookup once and returns the fallback if the key is missing.",
+          no: "The idiomatic one-liner is `d.get(key, default)` — one lookup, built-in fallback. The others re-check or short-circuit awkwardly." },
+    q2: { ok: "Correct — `else` runs only when the `try` block raised nothing, keeping success-only code out of the `try`.",
+          no: "Not quite. `else` runs only if the `try` raised nothing; `finally` is the one that always runs." },
+    q3: { ok: "Correct — a bare `except:` catches KeyboardInterrupt and SystemExit too, breaking Ctrl-C and hiding genuine bugs.",
+          no: "The real problem is breadth: a bare `except:` swallows everything, including Ctrl-C, masking real errors. Speed isn't the issue." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>

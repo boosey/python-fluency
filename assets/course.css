@@ -1,0 +1,143 @@
+/* Shared stylesheet for the Idiomatic Python course.
+   Tufte-inspired: a narrow measure, generous margins, serif prose, restrained
+   colour. Every lesson links this file so the course reads as one whole. */
+
+:root {
+  --ink: #1a1a1a;
+  --paper: #fdfcf9;
+  --muted: #6b6b6b;
+  --rule: #e3e0d8;
+  --accent: #3a5a78;      /* Python-docs-ish blue */
+  --accent-soft: #eef2f6;
+  --code-bg: #f4f2ec;
+  --good: #2e7d32;
+  --bad: #b23b3b;
+  --measure: 38rem;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 18px; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Charter, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+main {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 4rem 1.5rem 6rem;
+}
+
+/* --- Typography --- */
+h1, h2, h3 { line-height: 1.2; font-weight: 600; }
+h1 { font-size: 2.1rem; margin: 0 0 .3rem; letter-spacing: -.01em; }
+h2 { font-size: 1.4rem; margin: 2.8rem 0 .6rem; }
+h3 { font-size: 1.1rem; margin: 1.8rem 0 .4rem; }
+
+.kicker {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 1.2rem;
+}
+
+p, li { font-size: 1.06rem; }
+.lede { font-size: 1.18rem; color: #333; }
+small, .muted { color: var(--muted); }
+
+a { color: var(--accent); text-decoration-thickness: .5px; text-underline-offset: 2px; }
+
+hr { border: none; border-top: 1px solid var(--rule); margin: 3rem 0; }
+
+/* --- Code --- */
+code, pre, kbd {
+  font-family: "JetBrains Mono", "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  font-size: .9em;
+}
+code { background: var(--code-bg); padding: .08em .35em; border-radius: 4px; }
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  line-height: 1.5;
+}
+pre code { background: none; padding: 0; }
+.c-com { color: #8a8475; font-style: italic; } /* comment */
+.c-kw  { color: #8959a8; }                      /* keyword */
+.c-str { color: #718c00; }                      /* string  */
+.c-fn  { color: #4271ae; }                      /* func    */
+.c-num { color: #c18401; }                      /* number  */
+
+/* --- Callouts --- */
+.note {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  padding: .8rem 1rem;
+  border-radius: 0 6px 6px 0;
+  margin: 1.4rem 0;
+  font-size: .98rem;
+}
+.contrast {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1.4rem 0;
+}
+.contrast .col h4 {
+  margin: 0 0 .4rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.contrast .other h4 { color: var(--bad); }
+.contrast .py h4 { color: var(--good); }
+@media (max-width: 600px) { .contrast { grid-template-columns: 1fr; } }
+
+/* --- Quiz widget (styled by assets/quiz, behaviour inline per-lesson) --- */
+.quiz { border: 1px solid var(--rule); border-radius: 10px; padding: 1.2rem 1.3rem; margin: 1.6rem 0; }
+.quiz .q { font-weight: 600; margin-bottom: .8rem; }
+.quiz .opt {
+  display: block; width: 100%; text-align: left;
+  font: inherit; background: #fff; color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 7px;
+  padding: .6rem .8rem; margin: .4rem 0; cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.quiz .opt:hover { background: #faf8f2; }
+.quiz .opt.correct { border-color: var(--good); background: #edf7ed; }
+.quiz .opt.wrong   { border-color: var(--bad);  background: #fbeeee; }
+.quiz .fb { margin-top: .7rem; font-size: .96rem; min-height: 1.2em; }
+.quiz .fb.correct { color: var(--good); }
+.quiz .fb.wrong   { color: var(--bad); }
+
+/* --- Nav between lessons --- */
+.lesson-nav { display: flex; justify-content: space-between; margin-top: 3rem; font-size: .95rem; }
+.lesson-nav span { color: var(--muted); }
+
+/* --- Footer reminder --- */
+.ask-teacher {
+  margin-top: 3rem; padding: 1rem 1.2rem;
+  border: 1px dashed var(--accent);
+  border-radius: 8px; background: var(--accent-soft);
+  font-size: .98rem;
+}
+
+/* --- Print --- */
+@media print {
+  .narrator-bar { display: none !important; }
+  body { background: #fff; }
+  main { padding-top: 1rem; }
+  a { color: var(--ink); }
+}

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 05 — Iteration &amp; its built-ins · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson five: iteration and its built-ins.
+Here is the headline that trips up almost every newcomer: Python has no C-style index loop.
+There is no for-i-equals-zero, i-less-than-length, i-plus-plus.
+Instead you iterate the object itself, directly, with for x in xs.
+So the first reflex to unlearn is for i in range(len(xs)) followed by xs at i.
+If you only need the items, just say for x in xs and reach for the value by name.
+When you genuinely need the index too, wrap the iterable in enumerate.
+Enumerate yields index-value pairs, and you can pass start equals one when you want human-friendly numbering.
+To walk two sequences in lockstep, use zip, which pairs up their items and stops at the shorter one.
+A lovely trick: zip star matrix transposes a matrix, turning rows into columns.
+In Python three-ten and later, zip strict equals True raises if the inputs differ in length, catching silent bugs.
+Python also has a control structure most languages lack entirely: for-else.
+The else clause after a loop runs only if the loop finished without hitting a break, which is perfect for search-then-not-found logic.
+When you want to walk backwards, reach for reversed rather than fiddling with negative indices.
+When you want a different order, sorted takes a key function and a reverse flag, and returns a new list.
+Iterating a dict gives you its keys by default; use dot items for key-value pairs, dot values for just the values.
+Under all of this sits the iterator protocol: iter gives you an iterator, next pulls the following value, and StopIteration signals the end.
+You rarely call those by hand, but knowing they exist explains why generators, which we meet later, fit so neatly.
+And remember that range is lazy; it does not build a list, it produces numbers on demand as you iterate.
+Take the quick checks below, then ask me anything that is still fuzzy.
+</div>
+
+<main>
+  <div class="kicker">Lesson 05 · Idiomatic Python</div>
+  <h1>Iteration &amp; its built-ins</h1>
+  <p class="lede">Python has no C-style index loop. You iterate objects directly —
+  and a handful of built-ins make almost every "I need the index too" case
+  index-free.</p>
+
+  <p>You know how to loop. The win here is narrow and concrete: never reach for
+  <code>range(len(xs))</code> again. Iterate the thing itself, and let
+  <code>enumerate</code>, <code>zip</code>, and friends carry the bookkeeping.</p>
+
+  <h2>The loop Python doesn't have</h2>
+  <div class="contrast">
+    <div class="col other">
+      <h4>Most languages</h4>
+<pre><code><span class="c-com">// index, bound, increment</span>
+<span class="c-kw">for</span> (i = <span class="c-num">0</span>; i &lt; xs.length; i++) {
+    use(xs[i]);
+}</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># iterate the object directly</span>
+<span class="c-kw">for</span> x <span class="c-kw">in</span> xs:
+    use(x)</code></pre>
+    </div>
+  </div>
+
+  <p>The first reflex to retire is <code>for i in range(len(xs)):</code> followed
+  by <code>xs[i]</code>. If you only need the items, name them:
+  <code>for x in xs</code>. The index was never the point — the value was.</p>
+
+  <h2>When you really need the index: <code>enumerate</code></h2>
+<pre><code><span class="c-com"># index AND item, no manual counter</span>
+<span class="c-kw">for</span> i, x <span class="c-kw">in</span> <span class="c-fn">enumerate</span>(xs):
+    <span class="c-fn">print</span>(i, x)
+
+<span class="c-com"># human-friendly numbering starts at 1</span>
+<span class="c-kw">for</span> rank, name <span class="c-kw">in</span> <span class="c-fn">enumerate</span>(winners, start=<span class="c-num">1</span>):
+    <span class="c-fn">print</span>(f<span class="c-str">"{rank}. {name}"</span>)</code></pre>
+  <p><code>enumerate(xs)</code> yields <code>(index, item)</code> pairs, which you
+  unpack right in the <code>for</code> header. Pass <code>start=1</code> when the
+  number is for people, not for indexing.</p>
+
+  <div class="note"><strong>The mental shift:</strong> the index is a <em>side
+  product</em> of iteration, not the driver of it. You ask for it explicitly with
+  <code>enumerate</code> when you need it, and otherwise it stays out of your way.</div>
+
+  <h2>Two sequences at once: <code>zip</code></h2>
+<pre><code><span class="c-com"># walk in parallel; stops at the shorter input</span>
+<span class="c-kw">for</span> name, score <span class="c-kw">in</span> <span class="c-fn">zip</span>(names, scores):
+    <span class="c-fn">print</span>(name, score)
+
+<span class="c-com"># transpose a matrix: rows become columns</span>
+rows = [[<span class="c-num">1</span>, <span class="c-num">2</span>, <span class="c-num">3</span>], [<span class="c-num">4</span>, <span class="c-num">5</span>, <span class="c-num">6</span>]]
+cols = <span class="c-fn">list</span>(<span class="c-fn">zip</span>(*rows))   <span class="c-com"># [(1, 4), (2, 5), (3, 6)]</span></code></pre>
+  <p><code>zip</code> pairs items position-by-position and stops at the shortest
+  argument. The <code>zip(*rows)</code> idiom spreads the rows as separate
+  arguments, so column <code>k</code> is gathered from every row — a one-line
+  transpose.</p>
+
+  <div class="note"><strong>Python 3.10+:</strong> pass <code>zip(a, b, strict=True)</code>
+  to raise a <code>ValueError</code> when the inputs differ in length, instead of
+  silently truncating to the shortest. Reach for it when "same length" is an
+  invariant you want enforced.</div>
+
+  <h2>A loop clause most languages lack: <code>for … else</code></h2>
+<pre><code><span class="c-com"># the else runs only if the loop did NOT break</span>
+<span class="c-kw">for</span> item <span class="c-kw">in</span> haystack:
+    <span class="c-kw">if</span> matches(item):
+        found = item
+        <span class="c-kw">break</span>
+<span class="c-kw">else</span>:
+    found = <span class="c-kw">None</span>   <span class="c-com"># searched everything, no break ever fired</span></code></pre>
+  <p>The <code>else</code> attached to a <code>for</code> (or <code>while</code>)
+  runs <strong>only if the loop completed without hitting <code>break</code></strong>.
+  Read it as "for … else if-nothing-broke". It's the clean home for the
+  searched-and-found-nothing branch.</p>
+
+  <h2>Order, on demand: <code>reversed</code> and <code>sorted</code></h2>
+<pre><code><span class="c-com"># walk backwards without negative-index gymnastics</span>
+<span class="c-kw">for</span> x <span class="c-kw">in</span> <span class="c-fn">reversed</span>(xs):
+    ...
+
+<span class="c-com"># sorted returns a NEW list; key picks what to sort on</span>
+by_len  = <span class="c-fn">sorted</span>(words, key=<span class="c-fn">len</span>)
+by_high = <span class="c-fn">sorted</span>(scores, reverse=<span class="c-kw">True</span>)
+people  = <span class="c-fn">sorted</span>(people, key=<span class="c-kw">lambda</span> p: p.age)</code></pre>
+  <p><code>sorted</code> never mutates its argument — it returns a fresh list,
+  so it composes inside expressions. <code>key</code> takes a function applied to
+  each item to decide the order; <code>reverse=True</code> flips it.</p>
+
+  <h2>Iterating a <code>dict</code></h2>
+<pre><code><span class="c-com"># iterating a dict gives its KEYS by default</span>
+<span class="c-kw">for</span> key <span class="c-kw">in</span> prices:
+    ...
+
+<span class="c-kw">for</span> key, value <span class="c-kw">in</span> prices.items():   <span class="c-com"># pairs</span>
+    ...
+<span class="c-kw">for</span> value <span class="c-kw">in</span> prices.values():     <span class="c-com"># just values</span>
+    ...
+<span class="c-kw">for</span> key   <span class="c-kw">in</span> prices.keys():       <span class="c-com"># explicit keys</span>
+    ...</code></pre>
+  <p>A bare <code>for k in d</code> walks the <em>keys</em>. When you want both
+  sides, <code>.items()</code> is the idiom — never index back into the dict with
+  <code>d[k]</code> just to fetch the value you already have.</p>
+
+  <h2>Underneath: the iterator protocol</h2>
+  <p>All of this rests on a tiny contract. <code>iter(obj)</code> returns an
+  <em>iterator</em>; <code>next(it)</code> pulls the following value; when there
+  are none left it raises <code>StopIteration</code>, which the <code>for</code>
+  loop catches for you:</p>
+<pre><code>it = <span class="c-fn">iter</span>([<span class="c-num">10</span>, <span class="c-num">20</span>])
+<span class="c-fn">next</span>(it)   <span class="c-com"># 10</span>
+<span class="c-fn">next</span>(it)   <span class="c-com"># 20</span>
+<span class="c-fn">next</span>(it)   <span class="c-com"># raises StopIteration</span></code></pre>
+  <p>You rarely call these by hand, but they explain why a <code>for</code> loop
+  works on <em>anything</em> iterable — and they're exactly the hooks that
+  generators (a later lesson) implement to produce values lazily.</p>
+
+  <div class="note"><strong>Lazy by default:</strong> <code>range</code> doesn't
+  build a list — it computes numbers on demand as you iterate. That's why
+  <code>range(1_000_000)</code> costs almost nothing until you walk it.</div>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Three quick checks</h2>
+  <p class="muted">Recall beats recognition — answer before you scroll. Immediate
+  feedback below each.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. You need each item <em>and</em> its position. Which is idiomatic?</div>
+    <button class="opt">for i in range(len(xs)): use(i, xs[i])</button>
+    <button class="opt" data-correct="1">for i, x in enumerate(xs): use(i, x)</button>
+    <button class="opt">for x in xs.index(): use(x.i, x)</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. When does the <code>else</code> of a <code>for … else</code> run?</div>
+    <button class="opt">after every single pass through the loop body</button>
+    <button class="opt">only when the loop body raised an exception</button>
+    <button class="opt" data-correct="1">only if the loop finished without a break</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. What does <code>for k, v in d.items()</code> iterate over?</div>
+    <button class="opt" data-correct="1">key-value pairs, unpacked into k and v</button>
+    <button class="opt">just the keys of d, in insertion order</button>
+    <button class="opt">just the values of d, paired with None</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary source to go deeper:</strong> the official Python
+  documentation is the high-trust reference here — the built-in functions page on
+  <a href="https://docs.python.org/3/library/functions.html#enumerate"><code>enumerate</code></a>
+  (with <code>zip</code>, <code>reversed</code>, and <code>sorted</code> nearby on
+  the same page), and the tutorial's
+  <a href="https://docs.python.org/3/tutorial/controlflow.html">control flow
+  chapter</a> for <code>for … else</code> and the loop semantics.</p>
+
+  <div class="ask-teacher">💬 <strong>Stuck or curious?</strong> Ask me directly —
+  “how does <code>zip(*matrix)</code> actually transpose?”, “show me a real
+  <code>for … else</code> search”, “when is <code>strict=True</code> worth it?”.
+  I'm your teacher for this course, and the next lesson adapts to what you ask.</div>
+
+  <div class="lesson-nav">
+    <a href="0004-slicing.html">← Prev: Slicing</a>
+    <a href="0006-strings-and-fstrings.html">Next: Strings &amp; f-strings →</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — `enumerate` hands you the index and item together, no manual counter or re-indexing.",
+          no: "Not quite. `range(len(xs))` is the anti-pattern this lesson retires; `enumerate(xs)` yields (i, x) directly." },
+    q2: { ok: "Correct — the `else` fires only when the loop ran to completion with no `break`. Perfect for not-found logic.",
+          no: "No — it's tied to `break`, not to each pass or to exceptions. The `else` runs only if no `break` fired." },
+    q3: { ok: "Correct — `.items()` yields (key, value) pairs, which you unpack into `k, v`.",
+          no: "That's the trap: a bare `for k in d` gives keys; `.items()` gives key-value PAIRS, not keys or values alone." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>

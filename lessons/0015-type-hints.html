@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 15 — Type hints · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson fifteen: type hints.
+If you come from a statically typed language, the first thing to unlearn is the biggest surprise of Python's hints.
+They are not enforced at runtime; the interpreter reads them, then completely ignores them.
+A function annotated to take a string will happily run when you pass it an integer, and Python will not raise a type error.
+Hints exist for your tools, your editor, and the next human to read the code, not for the runtime.
+A type checker like mypy or pyright reads them and flags mismatches before you ever run the program.
+The basic shape is simple: write a colon and a type after a parameter, and an arrow and a type for the return.
+So define greet, name colon str, arrow str, and the contract is now visible to every reader and every tool.
+You annotate variables the same way, with a colon and a type after the name.
+Since Python 3.9 you write container types with the built-in names directly: list of int, dict of str to int, tuple of int and ellipsis.
+The old capital-L List and capital-D Dict from the typing module still work, but they are deprecated in favour of the builtins.
+For a value that might be missing, write X pipe None, which is the modern spelling of Optional.
+The same pipe builds any union, so int pipe str means either an integer or a string.
+From the typing module you still import the things that have no builtin form, like Any, Callable, and Iterable.
+For duck typing there is Protocol, which says any object with these methods fits, regardless of its base class.
+That is structural typing, and it matches Python's culture: if it quacks like a duck, the checker accepts it.
+Dataclasses lean on annotations too; the field types you wrote in lesson thirteen are exactly these hints.
+The idiom is to annotate your public function signatures, where the contract matters most.
+Resist annotating every obvious local variable; a count set to zero does not need to be told it is an int.
+Hint the boundaries, let inference handle the interior, and your code stays both readable and checkable.
+Scroll down, take the quick checks, and replay the narrated walkthrough whenever you like.
+When something is unclear, ask me directly. I am your teacher for this course.
+</div>
+
+<main>
+  <div class="kicker">Lesson 15 · Idiomatic Python</div>
+  <h1>Type hints</h1>
+  <p class="lede">Annotations that document your intent and power your editor and
+  type checker — without changing how a single line runs.</p>
+
+  <p>You already know static types from other languages. The delta here is small
+  but surprising: Python's hints look like static types, yet they're advisory.
+  The win is learning to read and write modern annotations so tooling can catch
+  your mistakes before you run the code.</p>
+
+  <h2>The surprise: hints are not enforced</h2>
+  <div class="note"><strong>The mental shift:</strong> annotations are <em>not</em>
+  checked at runtime. The interpreter parses them and stores them, then ignores
+  them when the function runs. They're for <strong>tooling</strong> (mypy,
+  pyright), your editor, and human readers — not for the runtime.</div>
+
+<pre><code><span class="c-kw">def</span> <span class="c-fn">greet</span>(name: str) -&gt; str:
+    <span class="c-kw">return</span> <span class="c-str">"hi "</span> + name
+
+<span class="c-fn">greet</span>(<span class="c-num">42</span>)  <span class="c-com"># runs! TypeError only from the + , not from the hint</span></code></pre>
+  <p>A type checker reads <code>name: str</code> and flags the call as wrong
+  <em>before</em> you run it. Python itself does no such check — that's the part
+  that trips up newcomers from static languages.</p>
+
+  <h2>Annotating functions and variables</h2>
+  <p>A colon and a type after a parameter; an arrow and a type for the return. The
+  same colon form annotates a variable.</p>
+<pre><code><span class="c-kw">def</span> <span class="c-fn">scale</span>(values: list[int], factor: int) -&gt; list[int]:
+    <span class="c-kw">return</span> [v * factor <span class="c-kw">for</span> v <span class="c-kw">in</span> values]
+
+count: int = <span class="c-num">0</span>
+name: str = <span class="c-str">"ada"</span></code></pre>
+
+  <h2>Built-in generics (3.9+)</h2>
+  <p>Write container types with the lowercase builtins directly — no import needed.</p>
+<pre><code>nums:    list[int]
+lookup:  dict[str, int]
+pair:    tuple[int, str]       <span class="c-com"># exactly two items</span>
+row:     tuple[int, ...]       <span class="c-com"># any number of ints</span></code></pre>
+  <div class="contrast">
+    <div class="col other">
+      <h4>Legacy (deprecated)</h4>
+<pre><code><span class="c-kw">from</span> typing <span class="c-kw">import</span> List, Dict
+
+xs: List[int]
+m:  Dict[str, int]</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Modern (3.9+)</h4>
+<pre><code><span class="c-com"># no import at all</span>
+
+xs: list[int]
+m:  dict[str, int]</code></pre>
+    </div>
+  </div>
+
+  <h2>Optional and unions with <code>|</code></h2>
+  <p>Since 3.10, write <code>X | None</code> for a value that might be missing —
+  this is the modern <code>Optional[X]</code>. The same pipe builds any union.</p>
+<pre><code><span class="c-kw">def</span> <span class="c-fn">find</span>(key: str) -&gt; str | None:        <span class="c-com"># may return a str or None</span>
+    <span class="c-kw">return</span> _cache.get(key)
+
+<span class="c-kw">def</span> <span class="c-fn">parse</span>(raw: str) -&gt; int | float:        <span class="c-com"># either numeric type</span>
+    ...</code></pre>
+  <p>The older spelling <code>Optional[str]</code> (from <code>typing</code>) is
+  identical to <code>str | None</code>; prefer the pipe in new code on 3.10+.</p>
+
+  <h2>What still comes from <code>typing</code></h2>
+  <p>Builtins cover containers, but some helpers have no lowercase form. Import
+  those from <code>typing</code>:</p>
+<pre><code><span class="c-kw">from</span> typing <span class="c-kw">import</span> Any, Callable, Iterable, Optional
+
+handler: Callable[[int, str], bool]   <span class="c-com"># takes (int, str), returns bool</span>
+items:   Iterable[str]                <span class="c-com"># anything you can iterate</span>
+data:    Any                          <span class="c-com"># opt out of checking</span></code></pre>
+  <p class="muted"><code>List</code>, <code>Dict</code>, <code>Tuple</code> from
+  <code>typing</code> still exist but are deprecated — reach for the builtins.</p>
+
+  <h2>Duck typing, made checkable: <code>Protocol</code></h2>
+  <p>Python's culture is "if it quacks like a duck." <code>Protocol</code> turns
+  that into something a checker understands: any object with the right methods
+  fits — no inheritance required.</p>
+<pre><code><span class="c-kw">from</span> typing <span class="c-kw">import</span> Protocol
+
+<span class="c-kw">class</span> <span class="c-fn">Sized</span>(Protocol):
+    <span class="c-kw">def</span> <span class="c-fn">__len__</span>(self) -&gt; int: ...
+
+<span class="c-kw">def</span> <span class="c-fn">describe</span>(x: Sized) -&gt; str:
+    <span class="c-kw">return</span> f<span class="c-str">"has {len(x)} items"</span>   <span class="c-com"># list, str, dict... all fit structurally</span></code></pre>
+
+  <div class="note"><strong>Tie-in:</strong> dataclasses (lesson 13) <em>are</em>
+  these annotations — the field types you wrote are hints the checker reads. And
+  <code>from __future__ import annotations</code> at the top of a file makes all
+  annotations lazy strings, handy for forward references; you'll see it in older
+  or self-referential code.</div>
+
+  <h2>The idiom: hint the boundaries</h2>
+  <p>Annotate <strong>public function signatures</strong>, where the contract
+  matters and tools help most. Don't over-annotate obvious locals — inference
+  already knows <code>count = 0</code> is an <code>int</code>.</p>
+<pre><code><span class="c-com"># good: the signature documents the contract</span>
+<span class="c-kw">def</span> <span class="c-fn">load</span>(path: str) -&gt; dict[str, int]:
+    total = <span class="c-num">0</span>                 <span class="c-com"># no hint needed — obvious</span>
+    ...</code></pre>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Three quick checks</h2>
+  <p class="muted">Recall beats recognition — answer before you scroll. Immediate
+  feedback below each.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. What happens at runtime when you call <code>greet(42)</code> on <code>def greet(name: str) -&gt; str</code>?</div>
+    <button class="opt">Python raises a TypeError because the hint is violated</button>
+    <button class="opt" data-correct="1">It runs; the hint is ignored, only a checker would flag it</button>
+    <button class="opt">Python silently converts the argument to a string first</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. Which is the modern (3.10+) way to annotate a value that may be missing?</div>
+    <button class="opt">def find(k: str) -&gt; typing.Maybe[str]: ...</button>
+    <button class="opt">def find(k: str) -&gt; str or None: ...</button>
+    <button class="opt" data-correct="1">def find(k: str) -&gt; str | None: ...</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. Which annotation is the preferred modern form for a dict from str to int?</div>
+    <button class="opt" data-correct="1">lookup: dict[str, int]  &nbsp;(builtin, no import)</button>
+    <button class="opt">lookup: Dict[str, int]  &nbsp;(from typing import Dict)</button>
+    <button class="opt">lookup: dict{str: int}  &nbsp;(brace generic syntax)</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary source to go deeper:</strong> the official
+  <a href="https://docs.python.org/3/library/typing.html">typing module
+  documentation</a> is the canonical reference for every construct here, and
+  <a href="https://peps.python.org/pep-0484/">PEP 484</a> is the proposal that
+  introduced type hints and explains the design intent — including why they are
+  deliberately not enforced at runtime.</p>
+
+  <div class="ask-teacher">💬 <strong>Stuck or curious?</strong> Ask me directly —
+  “how do I set up mypy on my project?”, “when should I use Protocol instead of a
+  base class?”, “what does <code>from __future__ import annotations</code> actually
+  change?”. I'm your teacher for this course, and the next lesson adapts to what
+  you ask.</div>
+
+  <div class="lesson-nav">
+    <a href="0014-exceptions-and-eafp.html">← Prev: Exceptions &amp; EAFP</a>
+    <a href="0016-pattern-matching.html">Next: Structural pattern matching →</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — hints aren't enforced at runtime. The call runs; only a checker like mypy or pyright would flag it.",
+          no: "Not quite. Python ignores annotations at runtime — the call just runs. Tooling, not the interpreter, catches the mismatch." },
+    q2: { ok: "Correct — `str | None` is the 3.10+ spelling of `Optional[str]`. The pipe builds the union.",
+          no: "No — `or` isn't a type operator and there's no `Maybe`. The modern form is `str | None`." },
+    q3: { ok: "Correct — lowercase builtins (3.9+) need no import; `dict[str, int]` is the preferred form.",
+          no: "Not the modern choice. `Dict` is deprecated, and brace syntax isn't valid. Use the builtin `dict[str, int]`." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>

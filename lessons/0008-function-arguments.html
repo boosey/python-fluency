@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 08 — Function arguments · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson eight: function arguments.
+You already know how to call functions, so this lesson is about reading and writing Python's unusually flexible signatures with confidence.
+Every Python argument can be passed by position or by name, and choosing names at the call site is one of the cheapest readability wins there is.
+When you see a bare True or a lone number in a call, the reader has to guess what it means; passing it as verbose equals True spells out the intent.
+Default values let a parameter fall back to something sensible when the caller stays silent.
+But there is a famous trap: a default value is evaluated once, when the function is defined, not on every call.
+So if you write def f with items defaulting to an empty list, that one list is shared across every call that relies on the default, and it quietly accumulates.
+The fix is to default to None, then inside the body write items equals items or None-becomes-a-fresh-list.
+A clean phrasing is: if items is None, set items to a new empty list.
+Next, the star parameter, written args, collects any extra positional arguments into a tuple.
+The double-star parameter, written kwargs, collects any extra keyword arguments into a dictionary.
+Together they let a function accept an arbitrary number of arguments, which is how wrappers and decorators stay general.
+The same two stars work in the other direction at the call site.
+Calling f of star sequence spreads a list or tuple into positional arguments, and f of double-star mapping spreads a dict into keyword arguments.
+A bare star in a signature is a marker: everything after it must be passed by keyword.
+That is how you force callers to write verbose equals True instead of a mystery positional flag.
+A slash in the signature does the opposite, marking the parameters before it as positional-only, which you will mostly meet in the standard library.
+The guiding idiom is simple: prefer keyword arguments for booleans and flags, because a name at the call site is worth a comment.
+Scroll down, take the quick checks, and replay this walkthrough whenever you like.
+When something is unclear, ask me directly. I am your teacher for this course.
+</div>
+
+<main>
+  <div class="kicker">Lesson 08 · Idiomatic Python</div>
+  <h1>Function arguments</h1>
+  <p class="lede">Python signatures are more flexible than almost any language you've
+  used. Learn to read and write them, and you can follow real-world code — and APIs —
+  without squinting.</p>
+
+  <p>You already know how to call a function. The win here is fluency with the
+  <em>shape</em> of Python signatures: passing by name, safe defaults,
+  <code>*args</code>/<code>**kwargs</code>, and call-site unpacking.</p>
+
+  <h2>Positional or keyword — your choice</h2>
+  <p>Every ordinary parameter can be filled by position <em>or</em> by name. Passing
+  by name is the idiom whenever the value alone wouldn't tell the reader what it is:</p>
+  <div class="contrast">
+    <div class="col other">
+      <h4>Mystery positionals</h4>
+<pre><code><span class="c-com"># what do these mean?</span>
+connect(<span class="c-str">"db"</span>, <span class="c-num">5432</span>, <span class="c-kw">True</span>)</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># the names are the documentation</span>
+connect(<span class="c-str">"db"</span>, port=<span class="c-num">5432</span>, ssl=<span class="c-kw">True</span>)</code></pre>
+    </div>
+  </div>
+
+  <h2>Default arguments — and the classic trap</h2>
+  <p>A default lets a parameter fall back to a value when the caller stays silent.
+  But a default is evaluated <strong>once</strong>, at <em>def</em> time — not on
+  every call. A mutable default is therefore shared across calls and accumulates:</p>
+<pre><code><span class="c-com"># BROKEN: the one list is reused on every default call</span>
+<span class="c-kw">def</span> <span class="c-fn">append_to</span>(value, items=[]):
+    items.append(value)
+    <span class="c-kw">return</span> items
+
+<span class="c-fn">append_to</span>(<span class="c-num">1</span>)  <span class="c-com"># [1]</span>
+<span class="c-fn">append_to</span>(<span class="c-num">2</span>)  <span class="c-com"># [1, 2]  — surprise!</span></code></pre>
+  <p>The fix is the idiom you'll see everywhere: default to <code>None</code>, then
+  build a fresh object inside the body.</p>
+<pre><code><span class="c-com"># FIXED: a new list every call</span>
+<span class="c-kw">def</span> <span class="c-fn">append_to</span>(value, items=<span class="c-kw">None</span>):
+    <span class="c-kw">if</span> items <span class="c-kw">is</span> <span class="c-kw">None</span>:
+        items = []
+    items.append(value)
+    <span class="c-kw">return</span> items</code></pre>
+  <div class="note"><strong>Rule of thumb:</strong> never put a mutable value
+  (<code>[]</code>, <code>{}</code>, <code>set()</code>) in a default. Use
+  <code>None</code> as the sentinel and create the real object in the body — either
+  <code>if items is None: items = []</code> or the terser <code>items = items or
+  []</code>.</div>
+
+  <h2><code>*args</code> and <code>**kwargs</code>: collect the extras</h2>
+  <p>A <code>*</code> parameter collects leftover <em>positional</em> arguments into a
+  <strong>tuple</strong>; a <code>**</code> parameter collects leftover
+  <em>keyword</em> arguments into a <strong>dict</strong>. The names are convention,
+  not syntax — the stars do the work:</p>
+<pre><code><span class="c-kw">def</span> <span class="c-fn">log</span>(level, *args, **kwargs):
+    <span class="c-fn">print</span>(level, args, kwargs)
+
+<span class="c-fn">log</span>(<span class="c-str">"INFO"</span>, <span class="c-num">1</span>, <span class="c-num">2</span>, user=<span class="c-str">"ada"</span>)
+<span class="c-com"># INFO (1, 2) {'user': 'ada'}</span></code></pre>
+  <p>This is how wrappers and decorators stay general: they accept
+  <code>(*args, **kwargs)</code> and forward them on unchanged.</p>
+
+  <h2>Unpacking at the call site</h2>
+  <p>The same two stars run in reverse when <em>calling</em>. <code>*</code> spreads a
+  sequence into positional arguments; <code>**</code> spreads a mapping into keyword
+  arguments:</p>
+<pre><code>point = (<span class="c-num">3</span>, <span class="c-num">4</span>)
+opts  = {<span class="c-str">"port"</span>: <span class="c-num">5432</span>, <span class="c-str">"ssl"</span>: <span class="c-kw">True</span>}
+
+<span class="c-fn">move</span>(*point)        <span class="c-com"># same as move(3, 4)</span>
+<span class="c-fn">connect</span>(<span class="c-str">"db"</span>, **opts)  <span class="c-com"># same as connect("db", port=5432, ssl=True)</span></code></pre>
+
+  <h2>Keyword-only arguments: the bare <code>*</code></h2>
+  <p>A bare <code>*</code> in a signature is a fence: every parameter after it
+  <strong>must</strong> be passed by name. This is how a library forces callers to be
+  explicit about flags instead of trailing a mystery boolean:</p>
+<pre><code><span class="c-kw">def</span> <span class="c-fn">render</span>(template, *, verbose=<span class="c-kw">False</span>):
+    ...
+
+<span class="c-fn">render</span>(<span class="c-str">"page"</span>, verbose=<span class="c-kw">True</span>)   <span class="c-com"># OK — named, readable</span>
+<span class="c-fn">render</span>(<span class="c-str">"page"</span>, <span class="c-kw">True</span>)           <span class="c-com"># TypeError: too many positional args</span></code></pre>
+  <p class="muted">The mirror image is the positional-only marker <code>/</code> (Python
+  3.8+): parameters before it can't be passed by name, e.g.
+  <code>def f(a, b, /):</code>. You'll meet it mostly in the standard library; you'll
+  rarely need to write it yourself.</p>
+
+  <div class="note"><strong>The idiom to keep:</strong> prefer keyword arguments for
+  booleans and flags. A bare <code>True</code> at a call site tells the reader
+  nothing; <code>verbose=True</code> reads like a sentence. When you design a function
+  with flags, put them after a bare <code>*</code> so callers can't omit the name.</div>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Three quick checks</h2>
+  <p class="muted">Recall beats recognition — answer before you scroll. Immediate
+  feedback below each.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. Why does <code>def f(x, items=[])</code> misbehave across calls?</div>
+    <button class="opt" data-correct="1">the default list is created once at def time and reused</button>
+    <button class="opt">the default list is rebuilt fresh on each separate call</button>
+    <button class="opt">empty lists are illegal as defaults and raise an error</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. Inside <code>def g(*args, **kwargs)</code>, what types are they?</div>
+    <button class="opt" data-correct="1">args is a tuple and kwargs is a dict</button>
+    <button class="opt">args is a list and kwargs is a set</button>
+    <button class="opt">args is a dict and kwargs is a list</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. In <code>def f(a, *, verbose=False)</code>, how must <code>verbose</code> be passed?</div>
+    <button class="opt" data-correct="1">by keyword only, written as verbose=True</button>
+    <button class="opt">by position only, as the second argument</button>
+    <button class="opt">either by position or by keyword freely</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary source to go deeper:</strong> the official Python tutorial is the
+  best high-trust reference here —
+  <a href="https://docs.python.org/3/tutorial/controlflow.html#defining-functions">“Defining
+  Functions”</a> introduces defaults and keyword calls, and
+  <a href="https://docs.python.org/3/tutorial/controlflow.html#more-on-defining-functions">“More
+  on Defining Functions”</a> covers <code>*args</code>, <code>**kwargs</code>,
+  keyword-only and positional-only parameters in full.</p>
+
+  <div class="ask-teacher">💬 <strong>Stuck or curious?</strong> Ask me directly —
+  “why is the default evaluated only once?”, “when should I use a bare <code>*</code>?”,
+  “show me how a decorator forwards <code>*args, **kwargs</code>”. I'm your teacher for
+  this course, and the next lesson adapts to what you ask.</div>
+
+  <div class="lesson-nav">
+    <a href="0007-dictionary-idioms.html">← Prev: Dictionary idioms</a>
+    <a href="0009-context-managers.html">Next: Context managers →</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — the default is evaluated once at def time, so one shared list accumulates across calls. Use items=None then build a fresh list inside.",
+          no: "Not quite. The default is evaluated once at def time, so the same list is reused and grows. Default to None and create a new list in the body." },
+    q2: { ok: "Correct — `*args` gathers extra positionals into a tuple, `**kwargs` gathers extra keywords into a dict.",
+          no: "No — `*args` is always a tuple and `**kwargs` is always a dict, regardless of the names you choose." },
+    q3: { ok: "Correct — everything after a bare `*` is keyword-only, so it must be written `verbose=True`.",
+          no: "Not quite. A bare `*` makes following parameters keyword-only, so `verbose` can't be passed positionally." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>

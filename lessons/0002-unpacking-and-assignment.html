@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 02 — Unpacking &amp; multiple assignment · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson two: unpacking and multiple assignment.
+This is the idiom that lets you pull values out of sequences in a single readable line, instead of indexing one element at a time.
+The starting point is multiple assignment: a comma b equals one comma two binds two names at once.
+The right side is really a tuple, and Python takes it apart to match the names on the left.
+The famous payoff is swapping two variables: a comma b equals b comma a, with no temporary variable at all.
+Python evaluates the whole right side first, then assigns, so the swap just works.
+Unpacking is not limited to tuples; it works on any iterable, including lists, strings, and the results of a function call.
+You will see it most often in for loops: for key comma value in pairs reads the two parts of each item directly.
+When a sequence is longer than the names, star unpacking captures the rest into a list.
+First comma star rest equals the sequence puts the head in first and everything else in rest.
+You can put the star in the middle or at the end too: star init comma last, or head comma star mid comma tail.
+The starred name always becomes a list, even when it captures nothing.
+When you do not care about a value, bind it to a single underscore by convention.
+A starred underscore, star underscore, swallows several values you want to ignore.
+Unpacking nests, so a comma open paren b comma c close paren mirrors the shape of the data.
+The same star and double-star work in the other direction, when you build calls and literals.
+A single star spreads an iterable into positional arguments or into a new list or tuple.
+A double star spreads a dictionary into keyword arguments, or merges dicts inside curly braces.
+Extended unpacking with the star came from PEP three one three two, and the dict union operator pipe arrived in Python three point nine.
+Reach for unpacking whenever you are reaching for an index; it almost always reads better.
+Scroll down, take the quick checks, and replay this narration whenever you like.
+When something is unclear, ask me directly. I am your teacher for this course.
+</div>
+
+<main>
+  <div class="kicker">Lesson 02 · Idiomatic Python</div>
+  <h1>Unpacking &amp; multiple assignment</h1>
+  <p class="lede">Stop indexing sequences one element at a time. Python lets you
+  name the pieces in a single line — and once it's automatic, half your “glue”
+  code disappears.</p>
+
+  <p>You already know how to read <code>pair[0]</code> and <code>pair[1]</code>.
+  The point of this lesson isn't <em>that</em> you can — it's to make Python's
+  unpacking forms so reflexive that you stop writing the index at all.</p>
+
+  <h2>Multiple assignment, and the swap</h2>
+  <div class="contrast">
+    <div class="col other">
+      <h4>Most languages</h4>
+<pre><code><span class="c-com"># swap needs a temp</span>
+tmp = a
+a = b
+b = tmp</code></pre>
+    </div>
+    <div class="col py">
+      <h4>Idiomatic Python</h4>
+<pre><code><span class="c-com"># one line, no temp</span>
+a, b = b, a</code></pre>
+    </div>
+  </div>
+
+  <p>The right-hand side <code>b, a</code> is a tuple. Python evaluates that
+  <em>whole</em> tuple first, <em>then</em> binds the names on the left — which is
+  exactly why the swap needs no temporary. The same mechanism powers plain
+  multiple assignment: <code>a, b = 1, 2</code>.</p>
+
+  <h2>Unpacking any iterable</h2>
+  <p>The left side describes a <em>shape</em>; the right side is any iterable that
+  matches it. Lengths must agree or you get a <code>ValueError</code>.</p>
+<pre><code>x, y, z = [<span class="c-num">1</span>, <span class="c-num">2</span>, <span class="c-num">3</span>]       <span class="c-com"># from a list</span>
+r, g, b = <span class="c-str">"RGB"</span>           <span class="c-com"># from a string</span>
+name, age = get_user()      <span class="c-com"># from a returned tuple</span></code></pre>
+
+  <div class="note"><strong>The mental shift:</strong> unpacking isn't a special
+  tuple feature — it's how <em>assignment itself</em> works against any iterable.
+  Once you see that, the <code>for</code>-loop form below stops looking like magic.</div>
+
+  <h2>Unpacking in <code>for</code> loops</h2>
+  <p>This is where you'll meet it most. Each item is unpacked as the loop binds it:</p>
+<pre><code><span class="c-kw">for</span> k, v <span class="c-kw">in</span> pairs:              <span class="c-com"># pairs of (key, value)</span>
+    <span class="c-fn">print</span>(k, <span class="c-str">"->"</span>, v)
+
+<span class="c-kw">for</span> i, item <span class="c-kw">in</span> <span class="c-fn">enumerate</span>(seq):  <span class="c-com"># index + value, idiomatic</span>
+    <span class="c-fn">print</span>(i, item)</code></pre>
+
+  <h2>Star unpacking: capture the rest</h2>
+  <p>When the iterable is longer than your names, a single starred name absorbs
+  whatever's left — as a <strong>list</strong>, always, even if it's empty:</p>
+<pre><code>first, *rest  = [<span class="c-num">1</span>, <span class="c-num">2</span>, <span class="c-num">3</span>, <span class="c-num">4</span>]   <span class="c-com"># first=1,  rest=[2, 3, 4]</span>
+*init, last   = [<span class="c-num">1</span>, <span class="c-num">2</span>, <span class="c-num">3</span>, <span class="c-num">4</span>]   <span class="c-com"># init=[1, 2, 3],  last=4</span>
+head, *mid, tail = [<span class="c-num">1</span>, <span class="c-num">2</span>, <span class="c-num">3</span>, <span class="c-num">4</span>] <span class="c-com"># head=1, mid=[2, 3], tail=4</span></code></pre>
+  <p>Exactly one star is allowed per target list — Python needs an unambiguous
+  pivot point. This is <a href="https://peps.python.org/pep-3132/">PEP 3132</a>
+  “extended iterable unpacking”.</p>
+
+  <h2>Ignoring values</h2>
+  <p>Bind throwaway values to a single underscore <code>_</code> by convention, and
+  use <code>*_</code> to swallow several you don't care about:</p>
+<pre><code>_, y = point              <span class="c-com"># ignore the x coordinate</span>
+first, *_ = record       <span class="c-com"># keep the head, drop the rest</span>
+name, *_, country = row  <span class="c-com"># keep the ends, drop the middle</span></code></pre>
+
+  <h2>Nested unpacking</h2>
+  <p>The target can mirror nested structure — parentheses on the left match
+  parentheses (or any grouping) on the right:</p>
+<pre><code>(a, (b, c)) = (<span class="c-num">1</span>, (<span class="c-num">2</span>, <span class="c-num">3</span>))         <span class="c-com"># a=1, b=2, c=3</span>
+
+<span class="c-kw">for</span> name, (lat, lon) <span class="c-kw">in</span> cities:    <span class="c-com"># unpack the pair inside each item</span>
+    <span class="c-fn">print</span>(name, lat, lon)</code></pre>
+
+  <h2>The other direction: <code>*</code> and <code>**</code> in calls and literals</h2>
+  <p>The same stars <em>spread</em> values when you build things. A single
+  <code>*</code> spreads an iterable; a double <code>**</code> spreads a dict:</p>
+<pre><code><span class="c-fn">print</span>(*args)                <span class="c-com"># spread an iterable as positional args</span>
+merged_list  = [*a, *b]      <span class="c-com"># concatenate into a new list</span>
+merged_tuple = (*a, *b)      <span class="c-com"># ...or a new tuple</span>
+
+config = {**base, <span class="c-str">"k"</span>: <span class="c-num">1</span>}    <span class="c-com"># copy base, then override "k"</span>
+merged = {**d1, **d2}        <span class="c-com"># later keys win on conflict</span>
+greet(**kwargs)              <span class="c-com"># spread a dict as keyword args</span></code></pre>
+
+  <div class="note"><strong>Two ways to merge dicts:</strong> the
+  <code>{**d1, **d2}</code> form works everywhere, and on conflict the
+  <em>later</em> key wins. Python 3.9+ also has the union operator
+  <code>d1 | d2</code>, which reads more cleanly — but
+  <code>{**d1, **d2}</code> is the form you'll see in code targeting any 3.x.</div>
+
+  <h2>When to reach for it</h2>
+  <p>The rule of thumb is simple: <strong>whenever you're about to write an index,
+  ask whether unpacking reads better.</strong> It usually does. Step back only when
+  the shape is genuinely dynamic — when you don't know how many elements you'll get
+  and can't express that with a single star.</p>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Three quick checks</h2>
+  <p class="muted">Recall beats recognition — answer before you scroll. Immediate
+  feedback below each.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. After <code>a, b = b, a</code>, why is no temporary variable needed?</div>
+    <button class="opt" data-correct="1">the right-hand tuple is fully evaluated before any name is bound</button>
+    <button class="opt">Python secretly creates a hidden temporary tuple to hold the value</button>
+    <button class="opt">the names are bound left to right, so the old value is reused</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. After <code>first, *rest = [10]</code>, what are <code>first</code> and <code>rest</code>?</div>
+    <button class="opt">first is 10 and rest is None because there is nothing left</button>
+    <button class="opt" data-correct="1">first is 10 and rest is the empty list because star is always a list</button>
+    <button class="opt">this raises a ValueError since rest has no values to capture</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. What does <code>{**d1, **d2}</code> give when both define key <code>"x"</code>?</div>
+    <button class="opt" data-correct="1">a new dict where d2's value for "x" wins over d1's</button>
+    <button class="opt">a new dict where d1's value for "x" wins over d2's</button>
+    <button class="opt">a TypeError, because the key "x" is defined twice</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary source to go deeper:</strong> the official Python tutorial,
+  <a href="https://docs.python.org/3/tutorial/datastructures.html">“Data
+  Structures”</a> — see its sections on tuples, sequences, and unpacking. For the
+  precise rules, the language reference on
+  <a href="https://docs.python.org/3/reference/simple_stmts.html#assignment-statements">assignment
+  statements</a> defines exactly how targets and starred targets are matched.</p>
+
+  <div class="ask-teacher">💬 <strong>Stuck or curious?</strong> Ask me directly —
+  “why must there be only one star?”, “show me nested unpacking in a real loop”,
+  “when should I use <code>d1 | d2</code> instead of <code>{**d1, **d2}</code>?”.
+  I'm your teacher for this course, and the next lesson adapts to what you ask.</div>
+
+  <div class="lesson-nav">
+    <a href="0001-comprehensions.html">← Prev: Comprehensions</a>
+    <a href="0003-truthiness-and-booleans.html">Next: Truthiness &amp; boolean idioms →</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — Python evaluates the entire right-hand tuple first, then binds the targets, so both old values survive the swap.",
+          no: "There's no hidden temp and no left-to-right reuse: the whole right side is evaluated before any name is bound. Answer: the first one." },
+    q2: { ok: "Correct — a starred target always becomes a list, here the empty list `[]`, never None and never an error.",
+          no: "A starred target is always a list — `[]` when it captures nothing. It's not None, and it doesn't raise. Answer: the second one." },
+    q3: { ok: "Correct — both keys are spread in order, and the later one (d2) wins on a conflict.",
+          no: "Spreading both is fine — no error. On a key clash the later dict (d2) wins. Answer: the first one." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>

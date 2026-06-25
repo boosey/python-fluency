@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 16 — Structural pattern matching · Idiomatic Python</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<!-- Voice-over script. One sentence per utterance. Hidden from view. -->
+<div id="narration" hidden>
+Welcome to lesson sixteen: structural pattern matching.
+If you came from C, Java, or JavaScript, the words match and case will make you think switch — and that instinct will mislead you.
+A C switch compares one value against a list of constants and falls through unless you break.
+Python's match does something different: it matches the subject against the shape of the data, and binds names as it goes.
+So the real win here is reading match statements with confidence, knowing they destructure, not just compare.
+The simplest cases do look switch-like: case literal, with case underscore as the catch-all wildcard.
+But the moment you write case Point of x and y, you are no longer comparing — you are pulling x and y out of the object.
+Sequence patterns work the same way: case open-bracket a comma b matches a two-element sequence and binds a and b.
+Add a star, as in case first comma star rest, and rest captures everything after the first element, just like unpacking.
+Mapping patterns match dictionaries by the keys you name, ignoring any extra keys the dict happens to carry.
+Class patterns can use positional arguments or keyword arguments, so case Point with x equals zero and y equals zero matches only the origin.
+You can add a guard: case a comma b, then if a equals b, runs the case only when that extra condition also holds.
+And you can combine alternatives with the pipe: case four-oh-one or four-oh-three or four-oh-four matches any of those three.
+Now the single most important gotcha, the one that trips up everyone.
+A bare lowercase name in a case does not compare against a variable of that name — it captures.
+So case red will match anything and bind it to red, even if you meant to check against a constant called red.
+To match against a constant, you must use a dotted name, like Color dot RED, or an attribute lookup.
+That one rule explains most of the confusion people have with match, so hold on to it.
+Reach for match when you are branching on the shape of structured data: parsed JSON, an abstract syntax tree, a command, an event.
+For a simple equality check on one value, a plain if or a dict lookup is still cleaner.
+Scroll down, take the quick checks, and replay the narrated walkthrough whenever you like.
+If anything here is fuzzy, ask me directly — I am your teacher for this course.
+</div>
+
+<main>
+  <div class="kicker">Lesson 16 · Idiomatic Python</div>
+  <h1>Structural pattern matching</h1>
+  <p class="lede">It looks like a <code>switch</code>, but it isn't one. <code>match</code>
+  branches on the <em>shape</em> of your data and pulls values out as it goes —
+  Python 3.10's most powerful reading skill.</p>
+
+  <p>You'll meet <code>match</code> in parsers, event handlers, and anything that
+  walks structured data. The goal of this lesson is to read <code>match</code>/<code>case</code>
+  fluently — and to internalise the one rule that confuses everyone.</p>
+
+  <h2>Not a switch — it destructures</h2>
+  <div class="contrast">
+    <div class="col other">
+      <h4>What you expect (a switch)</h4>
+<pre><code><span class="c-com">// compare one value to constants</span>
+<span class="c-kw">switch</span> (status) {
+  <span class="c-kw">case</span> <span class="c-num">404</span>: ...; <span class="c-kw">break</span>;
+  <span class="c-kw">default</span>: ...;
+}</code></pre>
+    </div>
+    <div class="col py">
+      <h4>What match actually does</h4>
+<pre><code><span class="c-com"># match the SHAPE, bind as you go</span>
+<span class="c-kw">match</span> point:
+    <span class="c-kw">case</span> Point(x, y):
+        <span class="c-com"># x and y are now bound</span>
+        ...</code></pre>
+    </div>
+  </div>
+  <p>A <code>switch</code> asks <em>“is this value equal to that constant?”</em>.
+  <code>match</code> asks <em>“does this data have this structure?”</em> — and where
+  it does, it <strong>binds names</strong> to the pieces. There is no fall-through
+  and no <code>break</code>; the first matching <code>case</code> wins.</p>
+
+  <h2>Literals and the wildcard</h2>
+  <p>The switch-like layer: match literal values, with <code>case _</code> as the
+  catch-all. The underscore is the wildcard — it matches anything and binds
+  nothing.</p>
+<pre><code><span class="c-kw">match</span> command:
+    <span class="c-kw">case</span> <span class="c-str">"quit"</span>:
+        ...
+    <span class="c-kw">case</span> <span class="c-str">"help"</span>:
+        ...
+    <span class="c-kw">case</span> _:
+        <span class="c-com"># anything else</span>
+        ...</code></pre>
+
+  <h2>Capture &amp; sequence patterns</h2>
+  <p>A name inside a pattern <em>captures</em> the matched value. Sequence patterns
+  destructure lists and tuples — including a starred name for “the rest”, exactly
+  like unpacking assignment:</p>
+<pre><code><span class="c-kw">match</span> coords:
+    <span class="c-kw">case</span> []:
+        <span class="c-com"># empty sequence</span>
+        ...
+    <span class="c-kw">case</span> [a, b]:
+        <span class="c-com"># exactly two items → a, b bound</span>
+        ...
+    <span class="c-kw">case</span> [first, *rest]:
+        <span class="c-com"># first item, then rest = everything after</span>
+        ...</code></pre>
+
+  <h2>Mapping &amp; class patterns</h2>
+  <p>Mapping patterns match dictionaries by the keys you name and <strong>ignore
+  extra keys</strong>. Class patterns match an instance and pull out attributes,
+  positionally or by keyword:</p>
+<pre><code><span class="c-kw">match</span> shape:
+    <span class="c-kw">case</span> {<span class="c-str">"type"</span>: <span class="c-str">"circle"</span>, <span class="c-str">"r"</span>: r}:
+        <span class="c-com"># r captured; other keys ignored</span>
+        area = <span class="c-num">3.14159</span> * r * r
+    <span class="c-kw">case</span> Point(x=<span class="c-num">0</span>, y=<span class="c-num">0</span>):
+        <span class="c-com"># only the origin matches</span>
+        ...
+    <span class="c-kw">case</span> Point(x=<span class="c-num">0</span>, y=y):
+        <span class="c-com"># on the y-axis; y captured</span>
+        ...</code></pre>
+  <p>Positional class patterns like <code>case Point(x, y)</code> rely on the class
+  declaring <code>__match_args__</code> (dataclasses do this for you); keyword
+  patterns like <code>Point(x=0, y=0)</code> always work.</p>
+
+  <h2>Guards and OR patterns</h2>
+  <p>A guard is a trailing <code>if</code> that adds a condition the pattern alone
+  can't express. A <code>|</code> (OR) pattern matches any of several alternatives:</p>
+<pre><code><span class="c-kw">match</span> pair:
+    <span class="c-kw">case</span> [a, b] <span class="c-kw">if</span> a == b:
+        <span class="c-com"># two equal items</span>
+        ...
+
+<span class="c-kw">match</span> status:
+    <span class="c-kw">case</span> <span class="c-num">401</span> | <span class="c-num">403</span> | <span class="c-num">404</span>:
+        <span class="c-com"># any of these three</span>
+        ...</code></pre>
+
+  <h2 id="gotcha">The one rule everyone trips on</h2>
+  <div class="note"><strong>A bare lowercase name in a <code>case</code> is a
+  <em>capture</em>, not a comparison.</strong> <code>case red:</code> does not check
+  whether the subject equals a variable named <code>red</code> — it matches
+  <em>anything</em> and binds it to <code>red</code> (and so acts like a catch-all,
+  shadowing later cases).</div>
+  <p>To match against a <strong>constant</strong>, use a <em>dotted</em> name — an
+  attribute lookup the parser recognises as a value, not a binding:</p>
+  <div class="contrast">
+    <div class="col other">
+      <h4>The trap (always matches)</h4>
+<pre><code><span class="c-kw">match</span> color:
+    <span class="c-kw">case</span> RED:
+        <span class="c-com"># captures! binds RED to color</span>
+        ...</code></pre>
+    </div>
+    <div class="col py">
+      <h4>The fix (compares by value)</h4>
+<pre><code><span class="c-kw">match</span> color:
+    <span class="c-kw">case</span> Color.RED:
+        <span class="c-com"># dotted → matches the constant</span>
+        ...</code></pre>
+    </div>
+  </div>
+  <p class="muted">Literals (<code>404</code>, <code>"quit"</code>) and dotted names
+  (<code>Color.RED</code>, <code>math.pi</code>) are <em>value</em> patterns. Bare
+  names are always captures. When in doubt, qualify it.</p>
+
+  <h2>When to reach for it</h2>
+  <p>Use <code>match</code> when you branch on the <em>structure</em> of data:
+  parsed JSON, an AST node, a command, an event object. For a plain equality check
+  on a single value, an <code>if</code>/<code>elif</code> chain or a dict lookup is
+  still simpler and clearer.</p>
+
+  <!-- ---------------- Quiz ---------------- -->
+  <h2>Three quick checks</h2>
+  <p class="muted">Recall beats recognition — answer before you scroll. Immediate
+  feedback below each.</p>
+
+  <div class="quiz" id="q1">
+    <div class="q">1. What does <code>case [first, *rest]:</code> match and bind?</div>
+    <button class="opt" data-correct="1">a non-empty sequence — first item, then the rest</button>
+    <button class="opt">only a list that holds exactly two items total</button>
+    <button class="opt">a dict whose first key maps onto the rest</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q2">
+    <div class="q">2. You want a case that fires only when <code>color</code> equals the constant <code>Color.RED</code>. Which is right?</div>
+    <button class="opt">case RED: — a bare name reads the constant value</button>
+    <button class="opt" data-correct="1">case Color.RED: — a dotted name matches by value</button>
+    <button class="opt">case red: — lowercase compares against the name</button>
+    <div class="fb"></div>
+  </div>
+
+  <div class="quiz" id="q3">
+    <div class="q">3. How does <code>match</code> differ most from a C <code>switch</code>?</div>
+    <button class="opt" data-correct="1">it matches the data's shape and binds the pieces</button>
+    <button class="opt">it falls through every case until a break stops it</button>
+    <button class="opt">it only ever compares one value against constants</button>
+    <div class="fb"></div>
+  </div>
+
+  <hr>
+
+  <p><strong>Primary source to go deeper:</strong> the official
+  <a href="https://docs.python.org/3/tutorial/controlflow.html#match-statements">Python
+  tutorial on <code>match</code> statements</a> is the authoritative, concise
+  reference. For the full tour with worked examples — including the capture-vs-value
+  rule — read <a href="https://peps.python.org/pep-0636/">PEP 636, the Structural
+  Pattern Matching tutorial</a> by Daniel F Moisset.</p>
+
+  <div class="ask-teacher">💬 <strong>Stuck or curious?</strong> Ask me directly —
+  “why does a bare name capture instead of compare?”, “how do positional class
+  patterns and <code>__match_args__</code> work?”, “when is <code>match</code>
+  clearer than <code>if</code>/<code>elif</code>?”. I'm your teacher for this
+  course, and the next lesson adapts to what you ask.</div>
+
+  <div class="lesson-nav">
+    <a href="0015-type-hints.html">← Prev: Type hints</a>
+    <a href="0017-zen-applied.html">Next: The Zen of Python, applied →</a>
+  </div>
+</main>
+
+<script>
+/* Inline quiz behaviour — tight, immediate feedback loop. */
+document.querySelectorAll(".quiz").forEach(function (quiz) {
+  var fb = quiz.querySelector(".fb");
+  var msgs = {
+    q1: { ok: "Correct — a starred name captures the remainder, exactly like unpacking. It needs at least one item for `first`.",
+          no: "Not quite. `[first, *rest]` matches any non-empty sequence: `first` is item one, `rest` captures everything after." },
+    q2: { ok: "Correct — a dotted name is a value pattern, so it compares against the constant.",
+          no: "Bare names (RED, red) capture and match anything — they don't read a constant. Use the dotted `Color.RED`." },
+    q3: { ok: "Correct — match destructures by shape and binds the parts; there is no fall-through.",
+          no: "That describes a `switch`. `match` matches the structure of the data and binds the captured pieces." }
+  }[quiz.id];
+  quiz.querySelectorAll(".opt").forEach(function (opt) {
+    opt.addEventListener("click", function () {
+      var right = opt.dataset.correct === "1";
+      quiz.querySelectorAll(".opt").forEach(function (o) {
+        o.disabled = true;
+        if (o.dataset.correct === "1") o.classList.add("correct");
+      });
+      if (!right) opt.classList.add("wrong");
+      fb.textContent = right ? msgs.ok : msgs.no;
+      fb.className = "fb " + (right ? "correct" : "wrong");
+    });
+  });
+});
+</script>
+<script src="../assets/narrate.js" defer></script>
+</body>
+</html>
