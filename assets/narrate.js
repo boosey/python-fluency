@@ -113,26 +113,25 @@
     var u = new SpeechSynthesisUtterance(chunks[i]);
     if (chosenVoice) u.voice = chosenVoice;
     u.rate = rate;
-    u.onend = next;                  // fast path: advance the moment it ends
+    u.onend = next;                  // primary path for well-behaved voices
     u.onerror = next;                // a failed/cancelled chunk: skip ahead
-    var started = false;
-    u.onstart = function () { started = true; };
     synth.speak(u);
 
-    // Fallback for voices that never fire `onend` (notably Chrome's remote
-    // Google voices): poll `speaking` every 250ms and advance as soon as the
-    // engine has spoken and gone quiet, so the gap between lines stays short
-    // instead of stalling. A per-line hard cap covers an engine that never
-    // starts at all.
+    // Fallback for voices that never fire `onend` (e.g. Chrome's remote
+    // Google voices). Watch `speaking`, but advance ONLY after we've actually
+    // observed it speaking and then seen silence for a few polls. We never act
+    // on the brief startup gap (speaking still false right after speak()), so
+    // we can't truncate a line by queueing the next one too early.
     var words = chunks[i].split(/\s+/).length;
-    var hardCapMs = (words / 2.0) * 1000 + 8000;
-    var elapsed = 0, step = 250;
+    var hardCapMs = (words / 2.0) * 1000 + 10000;
+    var sawSpeaking = false, quiet = 0, elapsed = 0, step = 200;
     function poll() {
       if (advanced) return;
-      if (paused) { watchdog = setTimeout(poll, step); return; }
-      if (synth.speaking) started = true;
+      if (paused) { quiet = 0; watchdog = setTimeout(poll, step); return; }
       elapsed += step;
-      if (!playing || (started && !synth.speaking) || elapsed >= hardCapMs) { next(); return; }
+      if (synth.speaking) { sawSpeaking = true; quiet = 0; }
+      else if (sawSpeaking) { quiet += 1; }
+      if (!playing || (sawSpeaking && quiet >= 3) || elapsed >= hardCapMs) { next(); return; }
       watchdog = setTimeout(poll, step);
     }
     watchdog = setTimeout(poll, step);
